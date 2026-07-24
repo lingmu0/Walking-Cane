@@ -1,0 +1,13 @@
+{
+  "itemGroup.walking_cane.walking_canes": "Walking Canes",
+  "item.walking_cane.wooden_cane": "Wooden Walking Cane",
+  "item.walking_cane.iron_cane": "Iron Walking Cane",
+  "item.walking_cane.diamond_cane": "Diamond Walking Cane",
+  "item.walking_cane.ender_cane": "Ender Walking Cane",
+  "item.walking_cane.netherite_cane": "Netherite Walking Cane",
+  "tooltip.walking_cane.speed": "In main hand: +%s%% movement and swim speed",
+  "tooltip.walking_cane.step_height": "In main hand: +1 step height",
+  "tooltip.walking_cane.dash": "Right-click: dash in the movement-input direction (look direction while idle), costs 1 durability, %ss cooldown",
+  "tooltip.walking_cane.teleport": "Sneak + right-click: teleport to the surface ahead, consuming all ender pearls in the offhand",
+  "tooltip.walking_cane.teleport_range": "Range: 50 + 100 blocks per pearl; 10s cooldown"
+}

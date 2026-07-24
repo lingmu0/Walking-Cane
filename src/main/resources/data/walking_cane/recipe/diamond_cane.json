@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    " DD",
+    "  S",
+    "  S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "walking_cane:diamond_cane"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    " PP",
+    "  S",
+    "  S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "walking_cane:wooden_cane"
+  }
+}
