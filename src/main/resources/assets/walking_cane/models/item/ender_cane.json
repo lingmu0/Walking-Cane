@@ -1,3 +1,6 @@
 {
-  "parent": "minecraft:item/warped_fungus_on_a_stick"
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "walking_cane:item/ender_cane"
+  }
 }

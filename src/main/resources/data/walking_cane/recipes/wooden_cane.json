@@ -1,6 +1,7 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
+  "group": "walking_cane:walking_canes",
   "key": {
     "P": {
       "tag": "minecraft:planks"
@@ -16,6 +17,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "walking_cane:wooden_cane"
+    "item": "walking_cane:wooden_cane"
   }
 }

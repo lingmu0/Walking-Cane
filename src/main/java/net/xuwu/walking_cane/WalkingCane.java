@@ -5,42 +5,43 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import net.xuwu.walking_cane.event.CaneInteractionEvents;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
-import net.xuwu.walking_cane.network.DashPayload;
+import net.xuwu.walking_cane.network.WalkingCaneNetwork;
 
 @Mod(WalkingCane.MOD_ID)
 public final class WalkingCane {
     public static final String MOD_ID = "walking_cane";
 
-    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MOD_ID);
+    public static final DeferredRegister<Item> ITEMS =
+            DeferredRegister.create(ForgeRegistries.ITEMS, MOD_ID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MOD_ID);
 
-    public static final DeferredItem<WalkingCaneItem> WOODEN_CANE = registerCane(
-            "wooden_cane", 0.15, 59, 0, 0, false
+    public static final RegistryObject<WalkingCaneItem> WOODEN_CANE = registerCane(
+            "wooden_cane", 0.15, 59, 0.0, 0, false
     );
-    public static final DeferredItem<WalkingCaneItem> IRON_CANE = registerCane(
-            "iron_cane", 0.30, 250, 0, 0, false
+    public static final RegistryObject<WalkingCaneItem> IRON_CANE = registerCane(
+            "iron_cane", 0.30, 250, 0.0, 0, false
     );
-    public static final DeferredItem<WalkingCaneItem> DIAMOND_CANE = registerCane(
+    public static final RegistryObject<WalkingCaneItem> DIAMOND_CANE = registerCane(
             "diamond_cane", 0.50, 1561, 2.5, 40, false
     );
-    public static final DeferredItem<WalkingCaneItem> ENDER_CANE = registerCane(
+    public static final RegistryObject<WalkingCaneItem> ENDER_CANE = registerCane(
             "ender_cane", 0.50, 1561, 2.5, 40, true
     );
-    public static final DeferredItem<WalkingCaneItem> NETHERITE_CANE = registerCane(
+    public static final RegistryObject<WalkingCaneItem> NETHERITE_CANE = registerCane(
             "netherite_cane", 0.80, 2031, 2.5, 30, false
     );
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> WALKING_CANES_TAB =
+    public static final RegistryObject<CreativeModeTab> WALKING_CANES_TAB =
             CREATIVE_TABS.register("walking_canes", () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.walking_cane.walking_canes"))
                     .withTabsBefore(CreativeModeTabs.COMBAT)
@@ -54,14 +55,16 @@ public final class WalkingCane {
                     })
                     .build());
 
-    public WalkingCane(IEventBus modEventBus) {
+    public WalkingCane() {
+        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ITEMS.register(modEventBus);
         CREATIVE_TABS.register(modEventBus);
-        modEventBus.addListener(WalkingCane::registerPayloads);
-        NeoForge.EVENT_BUS.addListener(CaneInteractionEvents::onRightClickItem);
+
+        WalkingCaneNetwork.register();
+        MinecraftForge.EVENT_BUS.addListener(CaneInteractionEvents::onRightClickItem);
     }
 
-    private static DeferredItem<WalkingCaneItem> registerCane(
+    private static RegistryObject<WalkingCaneItem> registerCane(
             String name,
             double speedBonus,
             int durability,
@@ -70,18 +73,11 @@ public final class WalkingCane {
             boolean canTeleport
     ) {
         return ITEMS.register(name, () -> new WalkingCaneItem(
-                new Item.Properties()
-                        .durability(durability)
-                        .attributes(WalkingCaneItem.createAttributes(speedBonus)),
+                new Item.Properties().durability(durability),
                 speedBonus,
                 dashStrength,
                 dashCooldownTicks,
                 canTeleport
         ));
-    }
-
-    private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1")
-                .playToServer(DashPayload.TYPE, DashPayload.STREAM_CODEC, DashPayload::handle);
     }
 }

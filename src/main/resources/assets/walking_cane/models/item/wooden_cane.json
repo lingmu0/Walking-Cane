@@ -1,3 +1,6 @@
 {
-  "parent": "minecraft:item/wooden_hoe"
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "walking_cane:item/wooden_cane"
+  }
 }

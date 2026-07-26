@@ -1,6 +1,7 @@
 {
   "type": "minecraft:crafting_shapeless",
   "category": "equipment",
+  "group": "walking_cane:walking_canes",
   "ingredients": [
     {
       "item": "walking_cane:diamond_cane"
@@ -14,6 +15,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "walking_cane:ender_cane"
+    "item": "walking_cane:ender_cane"
   }
 }

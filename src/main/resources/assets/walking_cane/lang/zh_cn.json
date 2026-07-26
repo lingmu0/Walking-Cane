@@ -5,8 +5,6 @@
   "item.walking_cane.diamond_cane": "钻石步行手杖",
   "item.walking_cane.ender_cane": "末影步行手杖",
   "item.walking_cane.netherite_cane": "下界合金步行手杖",
-  "tooltip.walking_cane.speed": "位于主手时：移动速度与游泳速度 +%s%%",
-  "tooltip.walking_cane.step_height": "位于主手时：跨步高度 +1",
   "tooltip.walking_cane.dash": "右键：沿移动输入方向冲刺（未移动时朝视线方向），消耗 1 点耐久，冷却 %s 秒",
   "tooltip.walking_cane.teleport": "潜行 + 右键：传送至前方坐标的露天表面，并消耗副手中的所有末影珍珠",
   "tooltip.walking_cane.teleport_range": "距离：基础 50 格，每颗末影珍珠增加 100 格；冷却 10 秒"

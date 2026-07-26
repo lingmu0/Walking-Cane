@@ -1,21 +1,22 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
+  "group": "walking_cane:walking_canes",
   "key": {
-    "D": {
-      "item": "minecraft:diamond"
+    "I": {
+      "item": "minecraft:iron_ingot"
     },
     "S": {
       "item": "minecraft:stick"
     }
   },
   "pattern": [
-    " DD",
+    " II",
     "  S",
     "  S"
   ],
   "result": {
     "count": 1,
-    "id": "walking_cane:diamond_cane"
+    "item": "walking_cane:iron_cane"
   }
 }
