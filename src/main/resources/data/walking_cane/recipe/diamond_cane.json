@@ -1,6 +1,7 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
+  "group": "walking_cane:walking_canes",
   "key": {
     "D": {
       "item": "minecraft:diamond"
