@@ -218,9 +218,13 @@ public final class WalkingCaneItem extends Item {
         double maxDistance = TELEPORT_BASE_DISTANCE + pearlCount * TELEPORT_DISTANCE_PER_PEARL;
         Vec3 look = player.getLookAngle().normalize();
         Vec3 target = player.position().add(look.scale(maxDistance));
+        BlockPos targetBlock = BlockPos.containing(target);
+
+        // Heightmaps are not reliable until the destination chunk has been loaded or generated.
+        level.getChunkAt(targetBlock);
         BlockPos surface = level.getHeightmapPos(
                 Heightmap.Types.WORLD_SURFACE,
-                BlockPos.containing(target)
+                targetBlock
         );
         Vec3 destination = new Vec3(target.x, surface.getY(), target.z);
 
