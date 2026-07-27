@@ -5,15 +5,12 @@
   "key": {
     "D": {
       "item": "minecraft:diamond"
-    },
-    "S": {
-      "item": "minecraft:stick"
     }
   },
   "pattern": [
     " DD",
-    "  S",
-    "  S"
+    "  D",
+    "  D"
   ],
   "result": {
     "count": 1,

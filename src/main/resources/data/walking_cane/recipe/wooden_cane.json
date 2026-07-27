@@ -5,15 +5,12 @@
   "key": {
     "P": {
       "tag": "minecraft:planks"
-    },
-    "S": {
-      "item": "minecraft:stick"
     }
   },
   "pattern": [
     " PP",
-    "  S",
-    "  S"
+    "  P",
+    "  P"
   ],
   "result": {
     "count": 1,

@@ -5,15 +5,12 @@
   "key": {
     "I": {
       "item": "minecraft:iron_ingot"
-    },
-    "S": {
-      "item": "minecraft:stick"
     }
   },
   "pattern": [
     " II",
-    "  S",
-    "  S"
+    "  I",
+    "  I"
   ],
   "result": {
     "count": 1,
