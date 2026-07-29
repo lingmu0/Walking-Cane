@@ -16,6 +16,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -36,22 +37,16 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class WalkingCaneItem extends Item {
-    private static final UUID MAIN_HAND_MOVEMENT_SPEED_MODIFIER_ID =
+    private static final UUID MOVEMENT_SPEED_MODIFIER_ID =
             UUID.fromString("f29f1dd3-a6d3-4ed4-bfe1-6d81d8d8631e");
-    private static final UUID MAIN_HAND_SWIM_SPEED_MODIFIER_ID =
+    private static final UUID SWIM_SPEED_MODIFIER_ID =
             UUID.fromString("f2f31c60-b2b8-45b4-8f56-c4051bc7a6e2");
-    private static final UUID MAIN_HAND_STEP_HEIGHT_MODIFIER_ID =
+    private static final UUID STEP_HEIGHT_MODIFIER_ID =
             UUID.fromString("b5d81e27-3579-42bd-a02a-4759df07b99f");
-    private static final UUID OFF_HAND_MOVEMENT_SPEED_MODIFIER_ID =
-            UUID.fromString("7d104f86-9b29-4f45-8cf3-d219c6e05a8a");
-    private static final UUID OFF_HAND_SWIM_SPEED_MODIFIER_ID =
-            UUID.fromString("a9c9b937-f5b9-4e12-9f62-4b0e8c5b1c41");
-    private static final UUID OFF_HAND_STEP_HEIGHT_MODIFIER_ID =
-            UUID.fromString("e1664714-1f54-4af5-809b-0d1228bfe2ac");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
 
-    private final Multimap<Attribute, AttributeModifier> mainHandModifiers;
-    private final Multimap<Attribute, AttributeModifier> offHandModifiers;
+    private final Multimap<Attribute, AttributeModifier> heldModifiers;
+    private final double speedBonus;
     private final double dashStrength;
     private final int dashCooldownTicks;
     private final boolean canTeleport;
@@ -64,48 +59,29 @@ public final class WalkingCaneItem extends Item {
             boolean canTeleport
     ) {
         super(properties);
+        this.speedBonus = speedBonus;
         this.dashStrength = dashStrength;
         this.dashCooldownTicks = dashCooldownTicks;
         this.canTeleport = canTeleport;
-        this.mainHandModifiers = WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.OFF_HAND
-                ? createAttributes(
-                        speedBonus,
-                        MAIN_HAND_MOVEMENT_SPEED_MODIFIER_ID,
-                        MAIN_HAND_SWIM_SPEED_MODIFIER_ID,
-                        MAIN_HAND_STEP_HEIGHT_MODIFIER_ID
-                )
-                : ImmutableMultimap.of();
-        this.offHandModifiers = WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.MAIN_HAND
-                ? createAttributes(
-                        speedBonus,
-                        OFF_HAND_MOVEMENT_SPEED_MODIFIER_ID,
-                        OFF_HAND_SWIM_SPEED_MODIFIER_ID,
-                        OFF_HAND_STEP_HEIGHT_MODIFIER_ID
-                )
-                : ImmutableMultimap.of();
+        this.heldModifiers = createAttributes(speedBonus);
     }
 
-    private static Multimap<Attribute, AttributeModifier> createAttributes(
-            double speedBonus,
-            UUID movementSpeedModifierId,
-            UUID swimSpeedModifierId,
-            UUID stepHeightModifierId
-    ) {
+    private static Multimap<Attribute, AttributeModifier> createAttributes(double speedBonus) {
         ImmutableMultimap.Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
         builder.put(Attributes.MOVEMENT_SPEED, new AttributeModifier(
-                movementSpeedModifierId,
+                MOVEMENT_SPEED_MODIFIER_ID,
                 "Walking cane movement speed",
                 speedBonus,
                 AttributeModifier.Operation.MULTIPLY_BASE
         ));
         builder.put(ForgeMod.SWIM_SPEED.get(), new AttributeModifier(
-                swimSpeedModifierId,
+                SWIM_SPEED_MODIFIER_ID,
                 "Walking cane swim speed",
                 speedBonus,
                 AttributeModifier.Operation.MULTIPLY_BASE
         ));
         builder.put(ForgeMod.STEP_HEIGHT_ADDITION.get(), new AttributeModifier(
-                stepHeightModifierId,
+                STEP_HEIGHT_MODIFIER_ID,
                 "Walking cane step height",
                 1.0,
                 AttributeModifier.Operation.ADDITION
@@ -115,13 +91,97 @@ public final class WalkingCaneItem extends Item {
 
     @Override
     public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(EquipmentSlot slot) {
-        if (slot == EquipmentSlot.MAINHAND) {
-            return mainHandModifiers;
+        return switch (WalkingCaneConfig.HAND_MODE) {
+            case MAIN_HAND -> slot == EquipmentSlot.MAINHAND
+                    ? heldModifiers
+                    : super.getDefaultAttributeModifiers(slot);
+            case OFF_HAND -> slot == EquipmentSlot.OFFHAND
+                    ? heldModifiers
+                    : super.getDefaultAttributeModifiers(slot);
+            case BOTH -> slot == EquipmentSlot.MAINHAND
+                    ? heldModifiers
+                    : super.getDefaultAttributeModifiers(slot);
+        };
+    }
+
+    public static void refreshBothHandAttributes(Player player) {
+        if (WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.BOTH) {
+            return;
         }
-        if (slot == EquipmentSlot.OFFHAND) {
-            return offHandModifiers;
+
+        WalkingCaneItem activeCane = getStrongerCane(
+                player.getMainHandItem(),
+                player.getOffhandItem()
+        );
+        if (activeCane == null) {
+            removeModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_SPEED_MODIFIER_ID);
+            removeModifier(player.getAttribute(ForgeMod.SWIM_SPEED.get()), SWIM_SPEED_MODIFIER_ID);
+            removeModifier(player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get()), STEP_HEIGHT_MODIFIER_ID);
+            return;
         }
-        return super.getDefaultAttributeModifiers(slot);
+
+        updateModifier(
+                player.getAttribute(Attributes.MOVEMENT_SPEED),
+                new AttributeModifier(
+                        MOVEMENT_SPEED_MODIFIER_ID,
+                        "Walking cane movement speed",
+                        activeCane.speedBonus,
+                        AttributeModifier.Operation.MULTIPLY_BASE
+                )
+        );
+        updateModifier(
+                player.getAttribute(ForgeMod.SWIM_SPEED.get()),
+                new AttributeModifier(
+                        SWIM_SPEED_MODIFIER_ID,
+                        "Walking cane swim speed",
+                        activeCane.speedBonus,
+                        AttributeModifier.Operation.MULTIPLY_BASE
+                )
+        );
+        updateModifier(
+                player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get()),
+                new AttributeModifier(
+                        STEP_HEIGHT_MODIFIER_ID,
+                        "Walking cane step height",
+                        1.0,
+                        AttributeModifier.Operation.ADDITION
+                )
+        );
+    }
+
+    private static WalkingCaneItem getStrongerCane(ItemStack first, ItemStack second) {
+        WalkingCaneItem firstCane = first.getItem() instanceof WalkingCaneItem cane ? cane : null;
+        WalkingCaneItem secondCane = second.getItem() instanceof WalkingCaneItem cane ? cane : null;
+        if (firstCane == null) {
+            return secondCane;
+        }
+        if (secondCane == null) {
+            return firstCane;
+        }
+        return firstCane.speedBonus >= secondCane.speedBonus ? firstCane : secondCane;
+    }
+
+    private static void updateModifier(
+            AttributeInstance attribute,
+            AttributeModifier modifier
+    ) {
+        if (attribute == null) {
+            return;
+        }
+
+        AttributeModifier current = attribute.getModifier(modifier.getId());
+        if (current == null
+                || Double.compare(current.getAmount(), modifier.getAmount()) != 0
+                || current.getOperation() != modifier.getOperation()) {
+            attribute.removeModifier(modifier.getId());
+            attribute.addTransientModifier(modifier);
+        }
+    }
+
+    private static void removeModifier(AttributeInstance attribute, UUID modifierId) {
+        if (attribute != null) {
+            attribute.removeModifier(modifierId);
+        }
     }
 
     @Override
