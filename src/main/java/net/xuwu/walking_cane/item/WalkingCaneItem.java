@@ -29,18 +29,13 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForgeMod;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.client.ClientDashSender;
+import net.xuwu.walking_cane.config.WalkingCaneConfig;
 
 import java.util.List;
 import java.util.Locale;
 
 public final class WalkingCaneItem extends Item {
-    private static final ResourceLocation HELD_SPEED_BONUS_ID =
-            ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_speed_bonus");
-    private static final ResourceLocation HELD_STEP_HEIGHT_BONUS_ID =
-            ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_step_height_bonus");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final double TELEPORT_BASE_DISTANCE = 50.0;
-    private static final double TELEPORT_DISTANCE_PER_PEARL = 100.0;
 
     private final int speedPercent;
     private final double dashStrength;
@@ -62,34 +57,54 @@ public final class WalkingCaneItem extends Item {
     }
 
     public static ItemAttributeModifiers createAttributes(double speedBonus) {
-        AttributeModifier modifier = new AttributeModifier(
-                HELD_SPEED_BONUS_ID,
+        ItemAttributeModifiers.Builder builder = ItemAttributeModifiers.builder();
+        if (WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.OFF_HAND) {
+            addAttributes(builder, speedBonus, EquipmentSlotGroup.MAINHAND, "mainhand");
+        }
+        if (WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.MAIN_HAND) {
+            addAttributes(builder, speedBonus, EquipmentSlotGroup.OFFHAND, "offhand");
+        }
+        return builder.build();
+    }
+
+    private static void addAttributes(
+            ItemAttributeModifiers.Builder builder,
+            double speedBonus,
+            EquipmentSlotGroup slot,
+            String slotName
+    ) {
+        AttributeModifier speedModifier = new AttributeModifier(
+                ResourceLocation.fromNamespaceAndPath(
+                        WalkingCane.MOD_ID,
+                        "held_speed_bonus_" + slotName
+                ),
                 speedBonus,
                 AttributeModifier.Operation.ADD_MULTIPLIED_BASE
         );
         AttributeModifier stepHeightModifier = new AttributeModifier(
-                HELD_STEP_HEIGHT_BONUS_ID,
+                ResourceLocation.fromNamespaceAndPath(
+                        WalkingCane.MOD_ID,
+                        "held_step_height_bonus_" + slotName
+                ),
                 1.0,
                 AttributeModifier.Operation.ADD_VALUE
         );
 
-        return ItemAttributeModifiers.builder()
-                .add(Attributes.MOVEMENT_SPEED, modifier, EquipmentSlotGroup.MAINHAND)
-                .add(NeoForgeMod.SWIM_SPEED, modifier, EquipmentSlotGroup.MAINHAND)
-                .add(Attributes.STEP_HEIGHT, stepHeightModifier, EquipmentSlotGroup.MAINHAND)
-                .build();
+        builder.add(Attributes.MOVEMENT_SPEED, speedModifier, slot);
+        builder.add(NeoForgeMod.SWIM_SPEED, speedModifier, slot);
+        builder.add(Attributes.STEP_HEIGHT, stepHeightModifier, slot);
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (hand != InteractionHand.MAIN_HAND) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return InteractionResultHolder.pass(stack);
         }
 
         if (canTeleport && player.isShiftKeyDown()) {
             if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
-                tryTeleport(serverLevel, serverPlayer);
+                tryTeleport(serverLevel, serverPlayer, hand);
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
@@ -126,13 +141,17 @@ public final class WalkingCaneItem extends Item {
         if (canTeleport) {
             tooltip.add(Component.translatable("tooltip.walking_cane.teleport")
                     .withStyle(ChatFormatting.DARK_PURPLE));
-            tooltip.add(Component.translatable("tooltip.walking_cane.teleport_range")
+            tooltip.add(Component.translatable(
+                    "tooltip.walking_cane.teleport_range",
+                    formatNumber(WalkingCaneConfig.TELEPORT_BASE_DISTANCE),
+                    formatNumber(WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL)
+            )
                     .withStyle(ChatFormatting.GRAY));
         }
     }
 
     public static void tryDash(ServerPlayer player, InteractionHand hand, float rawStrafe, float rawForward) {
-        if (hand != InteractionHand.MAIN_HAND) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
         }
 
@@ -166,7 +185,7 @@ public final class WalkingCaneItem extends Item {
             direction = player.getLookAngle().normalize();
         }
 
-        Vec3 dashVelocity = direction.scale(cane.dashStrength);
+        Vec3 dashVelocity = direction.scale(WalkingCaneConfig.DASH_STRENGTH);
         if (Math.abs(direction.y) < 1.0E-4) {
             double verticalVelocity = player.onGround()
                     ? 0.18
@@ -194,14 +213,22 @@ public final class WalkingCaneItem extends Item {
         );
     }
 
-    private void tryTeleport(ServerLevel level, ServerPlayer player) {
+    public void tryTeleport(ServerLevel level, ServerPlayer player, InteractionHand caneHand) {
+        if (!WalkingCaneConfig.isHandEnabled(caneHand)) {
+            return;
+        }
+
         if (player.getCooldowns().isOnCooldown(this)) {
             return;
         }
 
-        ItemStack pearls = player.getOffhandItem();
+        InteractionHand pearlHand = caneHand == InteractionHand.MAIN_HAND
+                ? InteractionHand.OFF_HAND
+                : InteractionHand.MAIN_HAND;
+        ItemStack pearls = player.getItemInHand(pearlHand);
         int pearlCount = pearls.is(Items.ENDER_PEARL) ? pearls.getCount() : 0;
-        double maxDistance = TELEPORT_BASE_DISTANCE + pearlCount * TELEPORT_DISTANCE_PER_PEARL;
+        double maxDistance = WalkingCaneConfig.TELEPORT_BASE_DISTANCE
+                + pearlCount * WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL;
         Vec3 look = player.getLookAngle().normalize();
         Vec3 target = player.position().add(look.scale(maxDistance));
         BlockPos targetBlock = BlockPos.containing(target);
@@ -271,7 +298,9 @@ public final class WalkingCaneItem extends Item {
     }
 
     private boolean canDash() {
-        return dashCooldownTicks > 0 && dashStrength > 0.0;
+        return dashCooldownTicks > 0
+                && dashStrength > 0.0
+                && WalkingCaneConfig.DASH_STRENGTH > 0.0;
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
@@ -289,5 +318,14 @@ public final class WalkingCaneItem extends Item {
             return Integer.toString((int) seconds);
         }
         return String.format(Locale.ROOT, "%.1f", seconds);
+    }
+
+    private static String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return Long.toString((long) value);
+        }
+        return String.format(Locale.ROOT, "%.2f", value)
+                .replaceAll("0+$", "")
+                .replaceAll("\\.$", "");
     }
 }

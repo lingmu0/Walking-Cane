@@ -8,6 +8,6 @@
   "tooltip.walking_cane.speed": "In main hand: +%s%% movement and swim speed",
   "tooltip.walking_cane.step_height": "In main hand: +1 step height",
   "tooltip.walking_cane.dash": "Right-click: dash in the movement-input direction (look direction while idle), costs 1 durability, %ss cooldown",
-  "tooltip.walking_cane.teleport": "Sneak + right-click: teleport to the surface ahead, consuming all ender pearls in the offhand",
-  "tooltip.walking_cane.teleport_range": "Range: 50 + 100 blocks per pearl; 10s cooldown"
+  "tooltip.walking_cane.teleport": "Sneak + right-click: teleport to the surface ahead, consuming all ender pearls in the other hand",
+  "tooltip.walking_cane.teleport_range": "Range: %s + %s blocks per pearl; 10s cooldown"
 }
