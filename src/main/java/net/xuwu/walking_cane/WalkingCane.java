@@ -12,6 +12,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.xuwu.walking_cane.event.CaneAttributeEvents;
 import net.xuwu.walking_cane.event.CaneInteractionEvents;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import net.xuwu.walking_cane.network.DashPayload;
@@ -58,6 +59,7 @@ public final class WalkingCane {
         ITEMS.register(modEventBus);
         CREATIVE_TABS.register(modEventBus);
         modEventBus.addListener(WalkingCane::registerPayloads);
+        NeoForge.EVENT_BUS.addListener(CaneAttributeEvents::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(CaneInteractionEvents::onRightClickItem);
     }
 
