@@ -28,6 +28,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.ForgeMod;
 import net.xuwu.walking_cane.client.ClientDashSender;
+import net.xuwu.walking_cane.config.WalkingCaneConfig;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -35,17 +36,22 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class WalkingCaneItem extends Item {
-    private static final UUID MOVEMENT_SPEED_MODIFIER_ID =
+    private static final UUID MAIN_HAND_MOVEMENT_SPEED_MODIFIER_ID =
             UUID.fromString("f29f1dd3-a6d3-4ed4-bfe1-6d81d8d8631e");
-    private static final UUID SWIM_SPEED_MODIFIER_ID =
+    private static final UUID MAIN_HAND_SWIM_SPEED_MODIFIER_ID =
             UUID.fromString("f2f31c60-b2b8-45b4-8f56-c4051bc7a6e2");
-    private static final UUID STEP_HEIGHT_MODIFIER_ID =
+    private static final UUID MAIN_HAND_STEP_HEIGHT_MODIFIER_ID =
             UUID.fromString("b5d81e27-3579-42bd-a02a-4759df07b99f");
+    private static final UUID OFF_HAND_MOVEMENT_SPEED_MODIFIER_ID =
+            UUID.fromString("7d104f86-9b29-4f45-8cf3-d219c6e05a8a");
+    private static final UUID OFF_HAND_SWIM_SPEED_MODIFIER_ID =
+            UUID.fromString("a9c9b937-f5b9-4e12-9f62-4b0e8c5b1c41");
+    private static final UUID OFF_HAND_STEP_HEIGHT_MODIFIER_ID =
+            UUID.fromString("e1664714-1f54-4af5-809b-0d1228bfe2ac");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final double TELEPORT_BASE_DISTANCE = 50.0;
-    private static final double TELEPORT_DISTANCE_PER_PEARL = 100.0;
 
     private final Multimap<Attribute, AttributeModifier> mainHandModifiers;
+    private final Multimap<Attribute, AttributeModifier> offHandModifiers;
     private final double dashStrength;
     private final int dashCooldownTicks;
     private final boolean canTeleport;
@@ -61,25 +67,45 @@ public final class WalkingCaneItem extends Item {
         this.dashStrength = dashStrength;
         this.dashCooldownTicks = dashCooldownTicks;
         this.canTeleport = canTeleport;
-        this.mainHandModifiers = createAttributes(speedBonus);
+        this.mainHandModifiers = WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.OFF_HAND
+                ? createAttributes(
+                        speedBonus,
+                        MAIN_HAND_MOVEMENT_SPEED_MODIFIER_ID,
+                        MAIN_HAND_SWIM_SPEED_MODIFIER_ID,
+                        MAIN_HAND_STEP_HEIGHT_MODIFIER_ID
+                )
+                : ImmutableMultimap.of();
+        this.offHandModifiers = WalkingCaneConfig.HAND_MODE != WalkingCaneConfig.HandMode.MAIN_HAND
+                ? createAttributes(
+                        speedBonus,
+                        OFF_HAND_MOVEMENT_SPEED_MODIFIER_ID,
+                        OFF_HAND_SWIM_SPEED_MODIFIER_ID,
+                        OFF_HAND_STEP_HEIGHT_MODIFIER_ID
+                )
+                : ImmutableMultimap.of();
     }
 
-    private static Multimap<Attribute, AttributeModifier> createAttributes(double speedBonus) {
+    private static Multimap<Attribute, AttributeModifier> createAttributes(
+            double speedBonus,
+            UUID movementSpeedModifierId,
+            UUID swimSpeedModifierId,
+            UUID stepHeightModifierId
+    ) {
         ImmutableMultimap.Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
         builder.put(Attributes.MOVEMENT_SPEED, new AttributeModifier(
-                MOVEMENT_SPEED_MODIFIER_ID,
+                movementSpeedModifierId,
                 "Walking cane movement speed",
                 speedBonus,
                 AttributeModifier.Operation.MULTIPLY_BASE
         ));
         builder.put(ForgeMod.SWIM_SPEED.get(), new AttributeModifier(
-                SWIM_SPEED_MODIFIER_ID,
+                swimSpeedModifierId,
                 "Walking cane swim speed",
                 speedBonus,
                 AttributeModifier.Operation.MULTIPLY_BASE
         ));
         builder.put(ForgeMod.STEP_HEIGHT_ADDITION.get(), new AttributeModifier(
-                STEP_HEIGHT_MODIFIER_ID,
+                stepHeightModifierId,
                 "Walking cane step height",
                 1.0,
                 AttributeModifier.Operation.ADDITION
@@ -89,21 +115,25 @@ public final class WalkingCaneItem extends Item {
 
     @Override
     public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(EquipmentSlot slot) {
-        return slot == EquipmentSlot.MAINHAND
-                ? mainHandModifiers
-                : super.getDefaultAttributeModifiers(slot);
+        if (slot == EquipmentSlot.MAINHAND) {
+            return mainHandModifiers;
+        }
+        if (slot == EquipmentSlot.OFFHAND) {
+            return offHandModifiers;
+        }
+        return super.getDefaultAttributeModifiers(slot);
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (hand != InteractionHand.MAIN_HAND) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return InteractionResultHolder.pass(stack);
         }
 
         if (canTeleport && player.isShiftKeyDown()) {
             if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
-                tryTeleport(serverLevel, serverPlayer);
+                tryTeleport(serverLevel, serverPlayer, hand);
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
@@ -135,7 +165,11 @@ public final class WalkingCaneItem extends Item {
         if (canTeleport) {
             tooltip.add(Component.translatable("tooltip.walking_cane.teleport")
                     .withStyle(ChatFormatting.DARK_PURPLE));
-            tooltip.add(Component.translatable("tooltip.walking_cane.teleport_range")
+            tooltip.add(Component.translatable(
+                    "tooltip.walking_cane.teleport_range",
+                    formatNumber(WalkingCaneConfig.TELEPORT_BASE_DISTANCE),
+                    formatNumber(WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL)
+            )
                     .withStyle(ChatFormatting.GRAY));
         }
     }
@@ -146,7 +180,7 @@ public final class WalkingCaneItem extends Item {
             float rawStrafe,
             float rawForward
     ) {
-        if (hand != InteractionHand.MAIN_HAND) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
         }
 
@@ -180,7 +214,7 @@ public final class WalkingCaneItem extends Item {
             direction = player.getLookAngle().normalize();
         }
 
-        Vec3 dashVelocity = direction.scale(cane.dashStrength);
+        Vec3 dashVelocity = direction.scale(WalkingCaneConfig.DASH_STRENGTH);
         if (Math.abs(direction.y) < 1.0E-4) {
             double verticalVelocity = player.onGround()
                     ? 0.18
@@ -208,14 +242,22 @@ public final class WalkingCaneItem extends Item {
         );
     }
 
-    private void tryTeleport(ServerLevel level, ServerPlayer player) {
+    public void tryTeleport(ServerLevel level, ServerPlayer player, InteractionHand caneHand) {
+        if (!WalkingCaneConfig.isHandEnabled(caneHand)) {
+            return;
+        }
+
         if (player.getCooldowns().isOnCooldown(this)) {
             return;
         }
 
-        ItemStack pearls = player.getOffhandItem();
+        InteractionHand pearlHand = caneHand == InteractionHand.MAIN_HAND
+                ? InteractionHand.OFF_HAND
+                : InteractionHand.MAIN_HAND;
+        ItemStack pearls = player.getItemInHand(pearlHand);
         int pearlCount = pearls.is(Items.ENDER_PEARL) ? pearls.getCount() : 0;
-        double maxDistance = TELEPORT_BASE_DISTANCE + pearlCount * TELEPORT_DISTANCE_PER_PEARL;
+        double maxDistance = WalkingCaneConfig.TELEPORT_BASE_DISTANCE
+                + pearlCount * WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL;
         Vec3 look = player.getLookAngle().normalize();
         Vec3 target = player.position().add(look.scale(maxDistance));
         BlockPos targetBlock = BlockPos.containing(target);
@@ -292,7 +334,9 @@ public final class WalkingCaneItem extends Item {
     }
 
     private boolean canDash() {
-        return dashCooldownTicks > 0 && dashStrength > 0.0;
+        return dashCooldownTicks > 0
+                && dashStrength > 0.0
+                && WalkingCaneConfig.DASH_STRENGTH > 0.0;
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
@@ -307,5 +351,14 @@ public final class WalkingCaneItem extends Item {
             return Integer.toString((int) seconds);
         }
         return String.format(Locale.ROOT, "%.1f", seconds);
+    }
+
+    private static String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return Long.toString((long) value);
+        }
+        return String.format(Locale.ROOT, "%.2f", value)
+                .replaceAll("0+$", "")
+                .replaceAll("\\.$", "");
     }
 }
