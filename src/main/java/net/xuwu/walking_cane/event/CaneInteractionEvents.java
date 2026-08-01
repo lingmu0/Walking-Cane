@@ -5,7 +5,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
@@ -17,13 +16,15 @@ public final class CaneInteractionEvents {
 
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
-        InteractionHand pearlHand = event.getHand();
-        InteractionHand caneHand = pearlHand == InteractionHand.MAIN_HAND
+        InteractionHand consumableHand = event.getHand();
+        InteractionHand caneHand = consumableHand == InteractionHand.MAIN_HAND
                 ? InteractionHand.OFF_HAND
                 : InteractionHand.MAIN_HAND;
 
         if (!player.isShiftKeyDown()
-                || !player.getItemInHand(pearlHand).is(Items.ENDER_PEARL)
+                || !WalkingCaneConfig.isTeleportConsumable(
+                        player.getItemInHand(consumableHand)
+                )
                 || !player.getItemInHand(caneHand).is(WalkingCane.ENDER_CANE.get())
                 || !WalkingCaneConfig.isHandEnabled(caneHand)) {
             return;

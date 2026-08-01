@@ -22,7 +22,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -311,13 +310,15 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
-        InteractionHand pearlHand = caneHand == InteractionHand.MAIN_HAND
+        InteractionHand consumableHand = caneHand == InteractionHand.MAIN_HAND
                 ? InteractionHand.OFF_HAND
                 : InteractionHand.MAIN_HAND;
-        ItemStack pearls = player.getItemInHand(pearlHand);
-        int pearlCount = pearls.is(Items.ENDER_PEARL) ? pearls.getCount() : 0;
+        ItemStack consumables = player.getItemInHand(consumableHand);
+        int consumableCount = WalkingCaneConfig.isTeleportConsumable(consumables)
+                ? consumables.getCount()
+                : 0;
         double maxDistance = WalkingCaneConfig.TELEPORT_BASE_DISTANCE
-                + pearlCount * WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL;
+                + consumableCount * WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL;
         Vec3 look = player.getLookAngle().normalize();
         Vec3 target = player.position().add(look.scale(maxDistance));
         BlockPos targetBlock = BlockPos.containing(target);
@@ -387,7 +388,7 @@ public final class WalkingCaneItem extends Item {
         );
 
         if (!player.getAbilities().instabuild) {
-            pearls.shrink(pearlCount);
+            consumables.shrink(consumableCount);
         }
         player.getCooldowns().addCooldown(this, TELEPORT_COOLDOWN_TICKS);
         player.awardStat(Stats.ITEM_USED.get(this));

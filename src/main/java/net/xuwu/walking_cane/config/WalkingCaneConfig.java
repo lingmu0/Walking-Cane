@@ -2,20 +2,28 @@ package net.xuwu.walking_cane.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class WalkingCaneConfig {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String FILE_NAME = "walking_cane.toml";
 
-    private static final HandMode DEFAULT_HAND_MODE = HandMode.MAIN_HAND;
+    private static final HandMode DEFAULT_HAND_MODE = HandMode.BOTH;
+    private static final List<String> DEFAULT_TELEPORT_CONSUMABLE_ITEMS =
+            List.of("minecraft:ender_pearl");
     private static final double DEFAULT_DASH_STRENGTH = 2.5;
     private static final double DEFAULT_TELEPORT_BASE_DISTANCE = 50.0;
     private static final double DEFAULT_TELEPORT_DISTANCE_PER_PEARL = 100.0;
@@ -27,6 +35,7 @@ public final class WalkingCaneConfig {
     public static final double DASH_STRENGTH;
     public static final double TELEPORT_BASE_DISTANCE;
     public static final double TELEPORT_DISTANCE_PER_PEARL;
+    public static final Set<ResourceLocation> TELEPORT_CONSUMABLE_ITEMS;
 
     static {
         LoadedValues values = load();
@@ -34,12 +43,14 @@ public final class WalkingCaneConfig {
         DASH_STRENGTH = values.dashStrength();
         TELEPORT_BASE_DISTANCE = values.teleportBaseDistance();
         TELEPORT_DISTANCE_PER_PEARL = values.teleportDistancePerPearl();
+        TELEPORT_CONSUMABLE_ITEMS = Set.copyOf(values.teleportConsumableItems());
         LOGGER.info(
-                "Loaded Walking Cane config: hand_mode={}, dash_strength={}, teleport_base_distance={}, teleport_distance_per_pearl={}",
+                "Loaded Walking Cane config: hand_mode={}, dash_strength={}, teleport_base_distance={}, teleport_distance_per_pearl={}, teleport_consumable_items={}",
                 HAND_MODE,
                 DASH_STRENGTH,
                 TELEPORT_BASE_DISTANCE,
-                TELEPORT_DISTANCE_PER_PEARL
+                TELEPORT_DISTANCE_PER_PEARL,
+                TELEPORT_CONSUMABLE_ITEMS
         );
     }
 
@@ -50,11 +61,19 @@ public final class WalkingCaneConfig {
         return HAND_MODE.allows(hand);
     }
 
+    public static boolean isTeleportConsumable(ItemStack stack) {
+        return !stack.isEmpty()
+                && TELEPORT_CONSUMABLE_ITEMS.contains(
+                        BuiltInRegistries.ITEM.getKey(stack.getItem())
+                );
+    }
+
     private static LoadedValues load() {
         HandMode handMode = DEFAULT_HAND_MODE;
         double dashStrength = DEFAULT_DASH_STRENGTH;
         double teleportBaseDistance = DEFAULT_TELEPORT_BASE_DISTANCE;
         double teleportDistancePerPearl = DEFAULT_TELEPORT_DISTANCE_PER_PEARL;
+        List<ResourceLocation> teleportConsumableItems = defaultTeleportConsumableItems();
         Path path = FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
 
         try {
@@ -84,6 +103,9 @@ public final class WalkingCaneConfig {
                         MAX_TELEPORT_DISTANCE,
                         "teleport_distance_per_pearl"
                 );
+                teleportConsumableItems = readItemList(
+                        config.get("teleport_consumable_items")
+                );
 
                 config.set("hand_mode", handMode.name());
                 config.setComment(
@@ -98,12 +120,22 @@ public final class WalkingCaneConfig {
                 config.set("teleport_base_distance", teleportBaseDistance);
                 config.setComment(
                         "teleport_base_distance",
-                        " Ender cane teleport distance without ender pearls. Range: 0.0 to 1000000.0. Requires a restart."
+                        " Ender cane teleport distance without consumable items. Range: 0.0 to 1000000.0. Requires a restart."
                 );
                 config.set("teleport_distance_per_pearl", teleportDistancePerPearl);
                 config.setComment(
                         "teleport_distance_per_pearl",
-                        " Extra teleport distance for each consumed ender pearl. Range: 0.0 to 1000000.0. Requires a restart."
+                        " Extra teleport distance for each consumed configured item. Range: 0.0 to 1000000.0. Requires a restart."
+                );
+                config.set(
+                        "teleport_consumable_items",
+                        teleportConsumableItems.stream()
+                                .map(ResourceLocation::toString)
+                                .toList()
+                );
+                config.setComment(
+                        "teleport_consumable_items",
+                        " Item IDs that the Ender Walking Cane may consume from the other hand. Each item adds teleport_distance_per_pearl blocks. May be empty. Requires a restart."
                 );
                 config.save();
             }
@@ -113,14 +145,48 @@ public final class WalkingCaneConfig {
             dashStrength = DEFAULT_DASH_STRENGTH;
             teleportBaseDistance = DEFAULT_TELEPORT_BASE_DISTANCE;
             teleportDistancePerPearl = DEFAULT_TELEPORT_DISTANCE_PER_PEARL;
+            teleportConsumableItems = defaultTeleportConsumableItems();
         }
 
         return new LoadedValues(
                 handMode,
                 dashStrength,
                 teleportBaseDistance,
-                teleportDistancePerPearl
+                teleportDistancePerPearl,
+                teleportConsumableItems
         );
+    }
+
+    private static List<ResourceLocation> readItemList(Object rawValue) {
+        if (rawValue == null) {
+            return defaultTeleportConsumableItems();
+        }
+        if (!(rawValue instanceof List<?> rawList)) {
+            LOGGER.warn(
+                    "Invalid teleport_consumable_items value '{}'; expected a list of item IDs. Using the default list",
+                    rawValue
+            );
+            return defaultTeleportConsumableItems();
+        }
+
+        LinkedHashSet<ResourceLocation> items = new LinkedHashSet<>();
+        for (Object entry : rawList) {
+            ResourceLocation itemId = entry == null
+                    ? null
+                    : ResourceLocation.tryParse(entry.toString().trim());
+            if (itemId == null) {
+                LOGGER.warn("Ignoring invalid teleport consumable item ID '{}'", entry);
+            } else {
+                items.add(itemId);
+            }
+        }
+        return List.copyOf(items);
+    }
+
+    private static List<ResourceLocation> defaultTeleportConsumableItems() {
+        return DEFAULT_TELEPORT_CONSUMABLE_ITEMS.stream()
+                .map(ResourceLocation::tryParse)
+                .toList();
     }
 
     private static HandMode readHandMode(Object rawValue) {
@@ -193,7 +259,8 @@ public final class WalkingCaneConfig {
             HandMode handMode,
             double dashStrength,
             double teleportBaseDistance,
-            double teleportDistancePerPearl
+            double teleportDistancePerPearl,
+            List<ResourceLocation> teleportConsumableItems
     ) {
     }
 }
