@@ -325,7 +325,7 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
-        if (storageLevel > 0 && storedCharges > 0) {
+        if (onCooldown && storageLevel > 0 && storedCharges > 0) {
             setStoredDashCharges(stack, storedCharges - 1);
         }
 
@@ -398,7 +398,7 @@ public final class WalkingCaneItem extends Item {
         if (onCooldown && (storageLevel <= 0 || storedCharges <= 0)) {
             return;
         }
-        if (storageLevel > 0 && storedCharges > 0) {
+        if (onCooldown && storageLevel > 0 && storedCharges > 0) {
             setStoredDashCharges(caneStack, storedCharges - 1);
         }
 
