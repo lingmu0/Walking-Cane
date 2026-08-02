@@ -25,8 +25,8 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Stores cooldown charges per player and Item, matching ItemCooldowns' item-keyed behavior.
- * The custom data mirrored to matching stacks is only used to synchronize the HUD number.
+ * Keeps cooldown state per player and Item, like ItemCooldowns. Charge values remain on
+ * individual stacks so different enchantment levels retain different storage limits.
  */
 public final class CooldownStorageManager {
     static final int COOLDOWN_TYPE_NONE = 0;
@@ -51,15 +51,10 @@ public final class CooldownStorageManager {
         );
     }
 
-    /** Reads the synchronized display value from a stack on either logical side. */
+    /** Reads the stack-local charge value on either logical side. */
     public static int getStoredCharges(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         return data == null ? 0 : data.copyTag().getInt(STORAGE_TAG);
-    }
-
-    public static boolean hasStoredCharges(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data != null && data.copyTag().contains(STORAGE_TAG);
     }
 
     public static boolean isCapturable(ServerPlayer player, InteractionHand hand) {
@@ -68,16 +63,13 @@ public final class CooldownStorageManager {
             return false;
         }
 
-        int storageLevel = level(player, stack);
-        StorageState state = storageLevel > 0
-                ? state(player, stack, storageLevel)
-                : null;
+        StorageState state = state(player, stack, level(player, stack));
         return state != null
-                && state.charges() > 0
+                && getStoredCharges(stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem());
     }
 
-    /** Returns the shared state for an item and imports legacy per-stack data once. */
+    /** Returns shared cooldown state and initializes/clamps every matching stack independently. */
     static StorageState state(ServerPlayer player, ItemStack stack, int storageLevel) {
         if (stack.isEmpty() || storageLevel <= 0) {
             return null;
@@ -89,22 +81,48 @@ public final class CooldownStorageManager {
                 ignored -> new HashMap<>()
         );
         StorageState state = playerStates.computeIfAbsent(item, StorageState::new);
-        state.maxCharges = Math.max(state.maxCharges, storageLevel);
+        initializeStacks(player, item, stack);
         if (!state.initialized) {
-            state.importFromStacks(player, stack);
+            state.importCooldownData(player, stack);
             state.initialized = true;
         }
-        state.maxCharges = Math.max(state.maxCharges, storageLevel);
-        state.charges = Math.min(Math.max(state.charges, 0), state.maxCharges);
         sync(player, state);
         return state;
     }
 
-    /** Mirrors one shared Item state to every matching stack for client HUD rendering. */
+    private static void initializeStacks(ServerPlayer player, Item item, ItemStack anchor) {
+        for (ItemStack stack : matchingStacks(player, item, anchor)) {
+            int stackLevel = level(player, stack);
+            if (stackLevel <= 0) {
+                continue;
+            }
+
+            int charges = getStoredCharges(stack);
+            if (!hasStoredCharges(stack)) {
+                charges = stackLevel;
+            }
+            charges = Math.min(Math.max(charges, 0), stackLevel);
+            final int initializedCharges = charges;
+            CustomData.update(
+                    DataComponents.CUSTOM_DATA,
+                    stack,
+                    data -> data.putInt(STORAGE_TAG, initializedCharges)
+            );
+        }
+    }
+
+    private static boolean hasStoredCharges(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.copyTag().contains(STORAGE_TAG);
+    }
+
+    /** Mirrors only shared cooldown metadata; charge counts stay stack-local. */
     static void sync(ServerPlayer player, StorageState state) {
         for (ItemStack stack : matchingStacks(player, state.item, null)) {
+            if (level(player, stack) <= 0) {
+                continue;
+            }
             CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> {
-                data.putInt(STORAGE_TAG, Math.max(0, state.charges));
                 if (state.activeCooldown) {
                     data.putBoolean(ACTIVE_TAG, true);
                 } else {
@@ -124,6 +142,55 @@ public final class CooldownStorageManager {
                 }
             });
         }
+    }
+
+    /** Decrements every matching enchanted stack that has a charge available. */
+    static void consumeCharges(ServerPlayer player, Item item) {
+        for (ItemStack stack : matchingStacks(player, item, null)) {
+            int stackLevel = level(player, stack);
+            if (stackLevel <= 0) {
+                continue;
+            }
+            int charges = getStoredCharges(stack);
+            if (!hasStoredCharges(stack)) {
+                charges = stackLevel;
+            }
+            if (charges > 0) {
+                final int nextCharges = charges - 1;
+                CustomData.update(
+                        DataComponents.CUSTOM_DATA,
+                        stack,
+                        data -> data.putInt(STORAGE_TAG, nextCharges)
+                );
+            }
+        }
+    }
+
+    /** Restores one charge on every matching stack, respecting each stack's own cap. */
+    static void replenishCharges(ServerPlayer player, Item item) {
+        for (ItemStack stack : matchingStacks(player, item, null)) {
+            int stackLevel = level(player, stack);
+            if (stackLevel <= 0) {
+                continue;
+            }
+            int charges = hasStoredCharges(stack) ? getStoredCharges(stack) : stackLevel;
+            final int nextCharges = Math.min(charges + 1, stackLevel);
+            CustomData.update(
+                    DataComponents.CUSTOM_DATA,
+                    stack,
+                    data -> data.putInt(STORAGE_TAG, nextCharges)
+            );
+        }
+    }
+
+    static boolean hasReplenishableCharges(ServerPlayer player, Item item) {
+        for (ItemStack stack : matchingStacks(player, item, null)) {
+            int stackLevel = level(player, stack);
+            if (stackLevel > 0 && getStoredCharges(stack) < stackLevel) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void tick(ServerPlayer player) {
@@ -146,17 +213,20 @@ public final class CooldownStorageManager {
             Item item = entry.getKey();
             StorageState state = entry.getValue();
             ItemStack representative = representatives.get(item);
-            int storageLevel = levels.getOrDefault(item, state.maxCharges);
-            if (storageLevel <= 0) {
-                if (!player.getCooldowns().isOnCooldown(item)) {
+            if (!levels.containsKey(item)) {
+                if (player.getCooldowns().isOnCooldown(item)) {
+                    if (item instanceof WalkingCaneItem cane) {
+                        cane.tickSharedCooldown(player, state);
+                    } else {
+                        tickGeneric(player, state);
+                    }
+                } else {
                     playerStates.remove(item);
                 }
                 continue;
             }
 
-            if (representative != null) {
-                state(player, representative, storageLevel);
-            }
+            state(player, representative, levels.get(item));
             if (item instanceof WalkingCaneItem cane) {
                 cane.tickSharedCooldown(player, state);
             } else {
@@ -185,9 +255,7 @@ public final class CooldownStorageManager {
         }
 
         if (state.activeCooldown) {
-            if (state.charges < state.maxCharges) {
-                state.charges++;
-            }
+            replenishCharges(player, state.item);
             state.activeCooldown = false;
             sync(player, state);
         }
@@ -202,7 +270,7 @@ public final class CooldownStorageManager {
         int storageLevel = level(player, stack);
         StorageState state = state(player, stack, storageLevel);
         if (state == null
-                || state.charges <= 0
+                || getStoredCharges(stack) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())) {
             return false;
         }
@@ -221,7 +289,7 @@ public final class CooldownStorageManager {
         if (result.getObject() != stack) {
             player.setItemInHand(hand, result.getObject());
         }
-        state.charges--;
+        consumeCharges(player, stack.getItem());
         state.activeCooldown = true;
         sync(player, state);
         return true;
@@ -251,8 +319,6 @@ public final class CooldownStorageManager {
     public static final class StorageState {
         private final Item item;
         private final ArrayDeque<Integer> cooldownQueue = new ArrayDeque<>();
-        private int maxCharges;
-        private int charges;
         private boolean initialized;
         private boolean activeCooldown;
         private int cooldownType;
@@ -263,18 +329,6 @@ public final class CooldownStorageManager {
 
         public Item item() {
             return item;
-        }
-
-        public int maxCharges() {
-            return maxCharges;
-        }
-
-        public int charges() {
-            return charges;
-        }
-
-        public void setCharges(int charges) {
-            this.charges = Math.max(0, Math.min(charges, maxCharges));
         }
 
         public boolean activeCooldown() {
@@ -303,17 +357,16 @@ public final class CooldownStorageManager {
             return cooldownQueue.isEmpty() ? COOLDOWN_TYPE_NONE : cooldownQueue.removeFirst();
         }
 
-        private void importFromStacks(ServerPlayer player, ItemStack anchor) {
-            int importedCharges = -1;
+        private void importCooldownData(ServerPlayer player, ItemStack anchor) {
             for (ItemStack stack : matchingStacks(player, item, anchor)) {
-                CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-                if (data == null) {
+                if (level(player, stack) <= 0) {
                     continue;
                 }
-                var tag = data.copyTag();
-                if (tag.contains(STORAGE_TAG)) {
-                    importedCharges = Math.max(importedCharges, tag.getInt(STORAGE_TAG));
+                CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+                if (customData == null) {
+                    continue;
                 }
+                var tag = customData.copyTag();
                 activeCooldown |= tag.getBoolean(ACTIVE_TAG);
                 if (cooldownType == COOLDOWN_TYPE_NONE && tag.contains(COOLDOWN_TYPE_TAG)) {
                     cooldownType = tag.getInt(COOLDOWN_TYPE_TAG);
@@ -325,7 +378,6 @@ public final class CooldownStorageManager {
                     }
                 }
             }
-            charges = importedCharges < 0 ? maxCharges : Math.min(importedCharges, maxCharges);
         }
     }
 }

@@ -256,13 +256,13 @@ public final class WalkingCaneItem extends Item {
                 : null;
 
         boolean onCooldown = player.getCooldowns().isOnCooldown(cane);
-        int storedCharges = storage == null ? 0 : storage.charges();
+        int storedCharges = CooldownStorageManager.getStoredCharges(stack);
         if (onCooldown && (storageLevel <= 0 || storedCharges <= 0)) {
             return;
         }
 
         if (onCooldown && storageLevel > 0 && storedCharges > 0) {
-            storage.setCharges(storedCharges - 1);
+            CooldownStorageManager.consumeCharges(player, cane);
         }
 
         float strafe = Mth.clamp(rawStrafe, -1.0F, 1.0F);
@@ -339,12 +339,12 @@ public final class WalkingCaneItem extends Item {
                 : null;
 
         boolean onCooldown = player.getCooldowns().isOnCooldown(this);
-        int storedCharges = storage == null ? 0 : storage.charges();
+        int storedCharges = CooldownStorageManager.getStoredCharges(caneStack);
         if (onCooldown && (storageLevel <= 0 || storedCharges <= 0)) {
             return;
         }
         if (onCooldown && storageLevel > 0 && storedCharges > 0) {
-            storage.setCharges(storedCharges - 1);
+            CooldownStorageManager.consumeCharges(player, this);
         }
 
         InteractionHand consumableHand = caneHand == InteractionHand.MAIN_HAND
@@ -477,7 +477,7 @@ public final class WalkingCaneItem extends Item {
         }
 
         if (!state.activeCooldown()) {
-            if (state.charges() < state.maxCharges()) {
+            if (CooldownStorageManager.hasReplenishableCharges(player, this)) {
                 int cooldownType = state.cooldownType();
                 if (cooldownType == CooldownStorageManager.COOLDOWN_TYPE_NONE) {
                     cooldownType = CooldownStorageManager.COOLDOWN_TYPE_DASH;
@@ -491,13 +491,11 @@ public final class WalkingCaneItem extends Item {
         }
 
         state.setActiveCooldown(false);
-        if (state.charges() < state.maxCharges()) {
-            state.setCharges(state.charges() + 1);
-        }
+        CooldownStorageManager.replenishCharges(player, this);
 
         int cooldownType = state.pollCooldown();
         if (cooldownType == CooldownStorageManager.COOLDOWN_TYPE_NONE) {
-            if (state.charges() >= state.maxCharges()) {
+            if (!CooldownStorageManager.hasReplenishableCharges(player, this)) {
                 state.setCooldownType(CooldownStorageManager.COOLDOWN_TYPE_NONE);
                 CooldownStorageManager.sync(player, state);
                 return;
