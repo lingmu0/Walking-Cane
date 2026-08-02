@@ -38,12 +38,19 @@ public final class ClientInputEvents {
             return;
         }
 
-        InteractionHand hand = findCapturableHand(player);
+        boolean teleport = player.isShiftKeyDown();
+        InteractionHand hand = teleport
+                ? findTeleportHand(player)
+                : findCapturableHand(player);
         if (hand == null) {
             return;
         }
 
-        ClientDashSender.send(hand);
+        if (teleport) {
+            ClientTeleportSender.send(hand);
+        } else {
+            ClientDashSender.send(hand);
+        }
         event.setCanceled(true);
     }
 
@@ -60,6 +67,15 @@ public final class ClientInputEvents {
             return;
         }
 
+        if (player.isShiftKeyDown()) {
+            InteractionHand teleportHand = findTeleportHand(player);
+            if (teleportHand != null) {
+                ClientTeleportSender.send(teleportHand);
+                event.setCanceled(true);
+            }
+            return;
+        }
+
         InteractionHand hand = event.getHand();
         if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
@@ -73,8 +89,7 @@ public final class ClientInputEvents {
                         WalkingCaneEnchantments.DASH_STORAGE
                 ) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
-                || WalkingCaneItem.getStoredDashCharges(stack) <= 0
-                || (cane.supportsEnderPearlSaver() && player.isShiftKeyDown())) {
+                || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
             return;
         }
 
@@ -105,7 +120,32 @@ public final class ClientInputEvents {
                         WalkingCaneEnchantments.DASH_STORAGE
                 ) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
-                && WalkingCaneItem.getStoredDashCharges(stack) > 0
-                && !(cane.supportsEnderPearlSaver() && player.isShiftKeyDown());
+                && WalkingCaneItem.getStoredDashCharges(stack) > 0;
+    }
+
+    private static InteractionHand findTeleportHand(LocalPlayer player) {
+        if (isTeleportCapturable(player, InteractionHand.MAIN_HAND)) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isTeleportCapturable(player, InteractionHand.OFF_HAND)) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isTeleportCapturable(LocalPlayer player, InteractionHand hand) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
+            return false;
+        }
+
+        ItemStack stack = player.getItemInHand(hand);
+        return stack.getItem() instanceof WalkingCaneItem cane
+                && cane.supportsEnderPearlSaver()
+                && WalkingCaneEnchantments.level(
+                        stack,
+                        WalkingCaneEnchantments.DASH_STORAGE
+                ) > 0
+                && player.getCooldowns().isOnCooldown(stack.getItem())
+                && WalkingCaneItem.getStoredDashCharges(stack) > 0;
     }
 }
