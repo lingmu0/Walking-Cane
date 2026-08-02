@@ -15,6 +15,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -199,6 +200,40 @@ public final class WalkingCaneItem extends Item {
     }
 
     @Override
+    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
+        super.inventoryTick(stack, level, entity, slotId, isSelected);
+        if (level.isClientSide || !(entity instanceof ServerPlayer player) || !canDash()) {
+            return;
+        }
+
+        int storageLevel = WalkingCaneEnchantments.level(
+                player,
+                stack,
+                WalkingCaneEnchantments.DASH_STORAGE
+        );
+        if (storageLevel <= 0) {
+            return;
+        }
+
+        if (!hasStoredDashCharges(stack)) {
+            setStoredDashCharges(stack, storageLevel);
+            return;
+        }
+
+        int storedCharges = Math.min(getStoredDashCharges(stack), storageLevel);
+        if (storedCharges != getStoredDashCharges(stack)) {
+            setStoredDashCharges(stack, storedCharges);
+        }
+        if (storedCharges < storageLevel && !player.getCooldowns().isOnCooldown(this)) {
+            int replenished = storedCharges + 1;
+            setStoredDashCharges(stack, replenished);
+            if (replenished < storageLevel) {
+                player.getCooldowns().addCooldown(this, dashCooldownTicks);
+            }
+        }
+    }
+
+    @Override
     public void appendHoverText(
             ItemStack stack,
             TooltipContext context,
@@ -248,12 +283,16 @@ public final class WalkingCaneItem extends Item {
                 stack,
                 WalkingCaneEnchantments.DASH_STORAGE
         );
-        if (player.getCooldowns().isOnCooldown(cane)) {
-            storeDashCharge(stack, storageLevel);
+        if (storageLevel > 0 && !hasStoredDashCharges(stack)) {
+            setStoredDashCharges(stack, storageLevel);
+        }
+
+        boolean onCooldown = player.getCooldowns().isOnCooldown(cane);
+        int storedCharges = getStoredDashCharges(stack);
+        if (onCooldown && storedCharges <= 0) {
             return;
         }
 
-        int storedCharges = getStoredDashCharges(stack);
         if (storedCharges > 0) {
             setStoredDashCharges(stack, storedCharges - 1);
         }
@@ -409,20 +448,14 @@ public final class WalkingCaneItem extends Item {
         return canTeleport;
     }
 
-    private static void storeDashCharge(ItemStack stack, int storageLevel) {
-        if (storageLevel <= 0) {
-            return;
-        }
-
-        int stored = getStoredDashCharges(stack);
-        if (stored < storageLevel) {
-            setStoredDashCharges(stack, stored + 1);
-        }
-    }
-
     public static int getStoredDashCharges(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         return data == null ? 0 : data.copyTag().getInt(DASH_STORAGE_TAG);
+    }
+
+    private static boolean hasStoredDashCharges(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.copyTag().contains(DASH_STORAGE_TAG);
     }
 
     private static void setStoredDashCharges(ItemStack stack, int value) {

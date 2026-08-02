@@ -1,5 +1,6 @@
 package net.xuwu.walking_cane.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
@@ -12,11 +13,34 @@ import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
 import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
+import org.lwjgl.glfw.GLFW;
 
 /** Captures dash clicks that vanilla suppresses while an item cooldown is active. */
 @EventBusSubscriber(modid = WalkingCane.MOD_ID, value = Dist.CLIENT)
 public final class ClientInputEvents {
     private ClientInputEvents() {
+    }
+
+    @SubscribeEvent
+    public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT
+                || event.getAction() != InputConstants.PRESS
+                || Minecraft.getInstance().screen != null) {
+            return;
+        }
+
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return;
+        }
+
+        InteractionHand hand = findCapturableHand(player);
+        if (hand == null) {
+            return;
+        }
+
+        ClientDashSender.send(hand);
+        event.setCanceled(true);
     }
 
     @SubscribeEvent
@@ -46,11 +70,40 @@ public final class ClientInputEvents {
                         WalkingCaneEnchantments.DASH_STORAGE
                 ) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
+                || WalkingCaneItem.getStoredDashCharges(stack) <= 0
                 || (cane.supportsEnderPearlSaver() && player.isShiftKeyDown())) {
             return;
         }
 
         ClientDashSender.send(hand);
         event.setCanceled(true);
+    }
+
+    private static InteractionHand findCapturableHand(LocalPlayer player) {
+        if (isCapturable(player, InteractionHand.MAIN_HAND)) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isCapturable(player, InteractionHand.OFF_HAND)) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isCapturable(LocalPlayer player, InteractionHand hand) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
+            return false;
+        }
+
+        ItemStack stack = player.getItemInHand(hand);
+        return stack.getItem() instanceof WalkingCaneItem cane
+                && cane.supportsDashStorage()
+                && WalkingCaneEnchantments.level(
+                        player,
+                        stack,
+                        WalkingCaneEnchantments.DASH_STORAGE
+                ) > 0
+                && player.getCooldowns().isOnCooldown(stack.getItem())
+                && WalkingCaneItem.getStoredDashCharges(stack) > 0
+                && !(cane.supportsEnderPearlSaver() && player.isShiftKeyDown());
     }
 }

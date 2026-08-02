@@ -50,15 +50,16 @@ public final class ClientItemDecorators {
             return false;
         }
 
-        String count = Integer.toString(WalkingCaneItem.getStoredDashCharges(stack));
-        guiGraphics.drawString(
-                font,
-                count,
-                xOffset + 17 - font.width(count),
-                yOffset + 1,
-                0xFFFFFFFF,
-                true
-        );
+        int storedCharges = WalkingCaneItem.getStoredDashCharges(stack);
+        if (storedCharges <= 0) {
+            return false;
+        }
+
+        String count = Integer.toString(storedCharges);
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0.0F, 0.0F, 250.0F);
+        guiGraphics.drawString(font, count, xOffset + 1, yOffset + 1, 0xFFFFFFFF, true);
+        guiGraphics.pose().popPose();
         return false;
     }
 }
