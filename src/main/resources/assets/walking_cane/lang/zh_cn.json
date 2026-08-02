@@ -10,6 +10,6 @@
   "tooltip.walking_cane.dash": "右键：沿移动输入方向冲刺（未移动时朝视线方向），消耗 1 点耐久，冷却 %s 秒",
   "tooltip.walking_cane.teleport": "潜行 + 右键：传送至前方坐标的露天表面，并消耗另一只手中的所有配置物品",
   "tooltip.walking_cane.teleport_range": "距离：基础 %s 格，每个消耗物增加 %s 格；冷却 10 秒",
-  "enchantment.walking_cane.dash_storage": "冲刺储存",
-  "enchantment.walking_cane.ender_pearl_saver": "末影珍珠节省"
+  "enchantment.walking_cane.dash_storage": "瞬步蓄能",
+  "enchantment.walking_cane.ender_pearl_saver": "末影恩赐"
 }
