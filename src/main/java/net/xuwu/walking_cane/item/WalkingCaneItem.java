@@ -45,6 +45,9 @@ public final class WalkingCaneItem extends Item {
             ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_step_height_bonus");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
     private static final String DASH_STORAGE_TAG = WalkingCane.MOD_ID + ".dash_storage";
+    private static final String COOLDOWN_TYPE_TAG = WalkingCane.MOD_ID + ".cooldown_type";
+    private static final int COOLDOWN_TYPE_DASH = 1;
+    private static final int COOLDOWN_TYPE_TELEPORT = 2;
 
     private final int speedPercent;
     private final double speedBonus;
@@ -228,7 +231,17 @@ public final class WalkingCaneItem extends Item {
             int replenished = storedCharges + 1;
             setStoredDashCharges(stack, replenished);
             if (replenished < storageLevel) {
-                player.getCooldowns().addCooldown(this, dashCooldownTicks);
+                int cooldownType = getCooldownType(stack);
+                if (cooldownType != COOLDOWN_TYPE_TELEPORT) {
+                    cooldownType = COOLDOWN_TYPE_DASH;
+                    setCooldownType(stack, cooldownType);
+                }
+                int cooldownTicks = cooldownType == COOLDOWN_TYPE_TELEPORT
+                        ? TELEPORT_COOLDOWN_TICKS
+                        : dashCooldownTicks;
+                player.getCooldowns().addCooldown(this, cooldownTicks);
+            } else {
+                setCooldownType(stack, 0);
             }
         }
     }
@@ -327,7 +340,10 @@ public final class WalkingCaneItem extends Item {
         player.hurtMarked = true;
         player.resetFallDistance();
 
-        player.getCooldowns().addCooldown(cane, cane.dashCooldownTicks);
+        if (!onCooldown) {
+            setCooldownType(stack, COOLDOWN_TYPE_DASH);
+            player.getCooldowns().addCooldown(cane, cane.dashCooldownTicks);
+        }
         damageCane(stack, player, hand);
         player.awardStat(Stats.ITEM_USED.get(cane));
         player.level().playSound(
@@ -351,6 +367,7 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
+        ItemStack caneStack = player.getItemInHand(caneHand);
         InteractionHand consumableHand = caneHand == InteractionHand.MAIN_HAND
                 ? InteractionHand.OFF_HAND
                 : InteractionHand.MAIN_HAND;
@@ -360,7 +377,7 @@ public final class WalkingCaneItem extends Item {
                 : 0;
         int savedConsumables = WalkingCaneEnchantments.level(
                 player,
-                player.getItemInHand(caneHand),
+                caneStack,
                 WalkingCaneEnchantments.ENDER_PEARL_SAVER
         );
         int consumedCount = Math.max(0, consumableCount - savedConsumables);
@@ -430,6 +447,7 @@ public final class WalkingCaneItem extends Item {
         if (!player.getAbilities().instabuild) {
             consumables.shrink(consumedCount);
         }
+        setCooldownType(caneStack, COOLDOWN_TYPE_TELEPORT);
         player.getCooldowns().addCooldown(this, TELEPORT_COOLDOWN_TICKS);
         player.awardStat(Stats.ITEM_USED.get(this));
     }
@@ -456,6 +474,21 @@ public final class WalkingCaneItem extends Item {
     private static boolean hasStoredDashCharges(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         return data != null && data.copyTag().contains(DASH_STORAGE_TAG);
+    }
+
+    private static int getCooldownType(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data == null ? 0 : data.copyTag().getInt(COOLDOWN_TYPE_TAG);
+    }
+
+    private static void setCooldownType(ItemStack stack, int type) {
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> {
+            if (type <= 0) {
+                data.remove(COOLDOWN_TYPE_TAG);
+            } else {
+                data.putInt(COOLDOWN_TYPE_TAG, type);
+            }
+        });
     }
 
     private static void setStoredDashCharges(ItemStack stack, int value) {
