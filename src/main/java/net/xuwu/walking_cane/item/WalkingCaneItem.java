@@ -2,6 +2,8 @@ package net.xuwu.walking_cane.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +32,7 @@ import net.neoforged.neoforge.common.NeoForgeMod;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.client.ClientDashSender;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
+import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +43,7 @@ public final class WalkingCaneItem extends Item {
     private static final ResourceLocation HELD_STEP_HEIGHT_BONUS_ID =
             ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_step_height_bonus");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
+    private static final String DASH_STORAGE_TAG_PREFIX = WalkingCane.MOD_ID + ".dash_storage.";
 
     private final int speedPercent;
     private final double speedBonus;
@@ -239,8 +243,19 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
+        int storageLevel = WalkingCaneEnchantments.level(
+                player,
+                stack,
+                WalkingCaneEnchantments.DASH_STORAGE
+        );
         if (player.getCooldowns().isOnCooldown(cane)) {
+            storeDashCharge(player, stack, hand, storageLevel);
             return;
+        }
+
+        int storedCharges = getStoredDashCharges(player, stack, hand);
+        if (storedCharges > 0) {
+            setStoredDashCharges(player, stack, hand, storedCharges - 1);
         }
 
         float strafe = Mth.clamp(rawStrafe, -1.0F, 1.0F);
@@ -304,6 +319,12 @@ public final class WalkingCaneItem extends Item {
         int consumableCount = WalkingCaneConfig.isTeleportConsumable(consumables)
                 ? consumables.getCount()
                 : 0;
+        int savedConsumables = WalkingCaneEnchantments.level(
+                player,
+                player.getItemInHand(caneHand),
+                WalkingCaneEnchantments.ENDER_PEARL_SAVER
+        );
+        int consumedCount = Math.max(0, consumableCount - savedConsumables);
         double maxDistance = WalkingCaneConfig.TELEPORT_BASE_DISTANCE
                 + consumableCount * WalkingCaneConfig.TELEPORT_DISTANCE_PER_PEARL;
         Vec3 look = player.getLookAngle().normalize();
@@ -368,7 +389,7 @@ public final class WalkingCaneItem extends Item {
         );
 
         if (!player.getAbilities().instabuild) {
-            consumables.shrink(consumableCount);
+            consumables.shrink(consumedCount);
         }
         player.getCooldowns().addCooldown(this, TELEPORT_COOLDOWN_TICKS);
         player.awardStat(Stats.ITEM_USED.get(this));
@@ -378,6 +399,52 @@ public final class WalkingCaneItem extends Item {
         return dashCooldownTicks > 0
                 && dashStrength > 0.0
                 && WalkingCaneConfig.DASH_STRENGTH > 0.0;
+    }
+
+    private static void storeDashCharge(
+            ServerPlayer player,
+            ItemStack stack,
+            InteractionHand hand,
+            int storageLevel
+    ) {
+        if (storageLevel <= 0) {
+            return;
+        }
+
+        int stored = getStoredDashCharges(player, stack, hand);
+        if (stored < storageLevel) {
+            setStoredDashCharges(player, stack, hand, stored + 1);
+        }
+    }
+
+    private static int getStoredDashCharges(
+            ServerPlayer player,
+            ItemStack stack,
+            InteractionHand hand
+    ) {
+        return player.getPersistentData().getInt(dashStorageKey(stack, hand));
+    }
+
+    private static void setStoredDashCharges(
+            ServerPlayer player,
+            ItemStack stack,
+            InteractionHand hand,
+            int value
+    ) {
+        String key = dashStorageKey(stack, hand);
+        CompoundTag data = player.getPersistentData();
+        if (value <= 0) {
+            data.remove(key);
+        } else {
+            data.putInt(key, value);
+        }
+    }
+
+    private static String dashStorageKey(ItemStack stack, InteractionHand hand) {
+        return DASH_STORAGE_TAG_PREFIX
+                + BuiltInRegistries.ITEM.getKey(stack.getItem())
+                + "."
+                + hand.getSerializedName();
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
