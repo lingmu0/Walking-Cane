@@ -83,7 +83,7 @@ public final class WalkingCane {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1")
+        event.registrar("2")
                 .playToServer(DashPayload.TYPE, DashPayload.STREAM_CODEC, DashPayload::handle);
     }
 }
