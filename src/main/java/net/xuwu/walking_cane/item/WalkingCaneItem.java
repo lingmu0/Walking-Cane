@@ -48,7 +48,7 @@ public final class WalkingCaneItem extends Item {
     private static final UUID STEP_HEIGHT_MODIFIER_ID =
             UUID.fromString("b5d81e27-3579-42bd-a02a-4759df07b99f");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final String DASH_STORAGE_TAG = "walking_cane.dash_storage";
+    private static final String COOLDOWN_STORAGE_TAG = "walking_cane.cooldown_storage";
     private static final String COOLDOWN_TYPE_TAG = "walking_cane.cooldown_type";
     private static final String COOLDOWN_QUEUE_TAG = "walking_cane.cooldown_queue";
     private static final int COOLDOWN_TYPE_DASH = 1;
@@ -226,7 +226,7 @@ public final class WalkingCaneItem extends Item {
 
         int storageLevel = WalkingCaneEnchantments.level(
                 stack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel <= 0) {
             return;
@@ -313,7 +313,7 @@ public final class WalkingCaneItem extends Item {
 
         int storageLevel = WalkingCaneEnchantments.level(
                 stack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel > 0 && !hasStoredDashCharges(stack)) {
             setStoredDashCharges(stack, storageLevel);
@@ -387,7 +387,7 @@ public final class WalkingCaneItem extends Item {
         ItemStack caneStack = player.getItemInHand(caneHand);
         int storageLevel = WalkingCaneEnchantments.level(
                 caneStack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel > 0 && !hasStoredDashCharges(caneStack)) {
             setStoredDashCharges(caneStack, storageLevel);
@@ -509,12 +509,17 @@ public final class WalkingCaneItem extends Item {
         return canTeleport;
     }
 
+    @Override
+    public int getEnchantmentValue() {
+        return 15;
+    }
+
     public static int getStoredDashCharges(ItemStack stack) {
-        return stack.hasTag() ? stack.getTag().getInt(DASH_STORAGE_TAG) : 0;
+        return stack.hasTag() ? stack.getTag().getInt(COOLDOWN_STORAGE_TAG) : 0;
     }
 
     private static boolean hasStoredDashCharges(ItemStack stack) {
-        return stack.hasTag() && stack.getTag().contains(DASH_STORAGE_TAG);
+        return stack.hasTag() && stack.getTag().contains(COOLDOWN_STORAGE_TAG);
     }
 
     private static int getCooldownType(ItemStack stack) {
@@ -570,7 +575,7 @@ public final class WalkingCaneItem extends Item {
     }
 
     private static void setStoredDashCharges(ItemStack stack, int value) {
-        stack.getOrCreateTag().putInt(DASH_STORAGE_TAG, Math.max(0, value));
+        stack.getOrCreateTag().putInt(COOLDOWN_STORAGE_TAG, Math.max(0, value));
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {

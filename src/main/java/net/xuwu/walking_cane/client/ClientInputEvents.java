@@ -12,6 +12,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
 import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
+import net.xuwu.walking_cane.item.CooldownStorageManager;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import org.lwjgl.glfw.GLFW;
 
@@ -43,6 +44,12 @@ public final class ClientInputEvents {
                 ? findTeleportHand(player)
                 : findCapturableHand(player);
         if (hand == null) {
+            hand = findGenericHand(player);
+            if (hand == null) {
+                return;
+            }
+            ClientCooldownUseSender.send(hand);
+            event.setCanceled(true);
             return;
         }
 
@@ -72,21 +79,34 @@ public final class ClientInputEvents {
             if (teleportHand != null) {
                 ClientTeleportSender.send(teleportHand);
                 event.setCanceled(true);
+                return;
+            }
+            InteractionHand genericHand = findGenericHand(player);
+            if (genericHand != null) {
+                ClientCooldownUseSender.send(genericHand);
+                event.setCanceled(true);
             }
             return;
         }
 
         InteractionHand hand = event.getHand();
+        ItemStack stack = player.getItemInHand(hand);
+        if (!(stack.getItem() instanceof WalkingCaneItem)) {
+            if (isGenericCapturable(player, hand)) {
+                ClientCooldownUseSender.send(hand);
+                event.setCanceled(true);
+            }
+            return;
+        }
         if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
         }
 
-        ItemStack stack = player.getItemInHand(hand);
         if (!(stack.getItem() instanceof WalkingCaneItem cane)
                 || !cane.supportsDashStorage()
                 || WalkingCaneEnchantments.level(
                         stack,
-                        WalkingCaneEnchantments.DASH_STORAGE
+                        WalkingCaneEnchantments.COOLDOWN_STORAGE
                 ) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
@@ -117,7 +137,7 @@ public final class ClientInputEvents {
                 && cane.supportsDashStorage()
                 && WalkingCaneEnchantments.level(
                         stack,
-                        WalkingCaneEnchantments.DASH_STORAGE
+                        WalkingCaneEnchantments.COOLDOWN_STORAGE
                 ) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
@@ -143,9 +163,28 @@ public final class ClientInputEvents {
                 && cane.supportsEnderPearlSaver()
                 && WalkingCaneEnchantments.level(
                         stack,
-                        WalkingCaneEnchantments.DASH_STORAGE
+                        WalkingCaneEnchantments.COOLDOWN_STORAGE
                 ) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
+    }
+
+    private static InteractionHand findGenericHand(LocalPlayer player) {
+        if (isGenericCapturable(player, InteractionHand.MAIN_HAND)) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isGenericCapturable(player, InteractionHand.OFF_HAND)) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isGenericCapturable(LocalPlayer player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        return !stack.isEmpty()
+                && !(stack.getItem() instanceof WalkingCaneItem)
+                && CooldownStorageManager.level(stack) > 0
+                && CooldownStorageManager.getStoredCharges(stack) > 0
+                && player.getCooldowns().isOnCooldown(stack.getItem());
     }
 }

@@ -13,21 +13,29 @@ import net.xuwu.walking_cane.item.WalkingCaneItem;
 
 /** Registered enchantments for the Forge 1.20.1 build. */
 public final class WalkingCaneEnchantments {
-    private static final EnchantmentCategory WALKING_CANE_CATEGORY =
-            EnchantmentCategory.create("walking_cane", item -> item instanceof WalkingCaneItem);
+    private static final EnchantmentCategory COOLDOWN_STORAGE_CATEGORY =
+            EnchantmentCategory.create("cooldown_storage", item -> true);
+    private static final EnchantmentCategory ENDER_PEARL_SAVER_CATEGORY =
+            EnchantmentCategory.create("ender_pearl_saver", item -> item instanceof WalkingCaneItem);
 
     public static final DeferredRegister<Enchantment> ENCHANTMENTS =
             DeferredRegister.create(ForgeRegistries.ENCHANTMENTS, WalkingCane.MOD_ID);
 
-    public static final RegistryObject<Enchantment> DASH_STORAGE = ENCHANTMENTS.register(
-            "dash_storage",
-            () -> new CaneEnchantment(Enchantment.Rarity.UNCOMMON, stack ->
-                    stack.getItem() instanceof WalkingCaneItem cane && cane.supportsDashStorage())
+    public static final RegistryObject<Enchantment> COOLDOWN_STORAGE = ENCHANTMENTS.register(
+            "cooldown_storage",
+            () -> new CaneEnchantment(
+                    Enchantment.Rarity.UNCOMMON,
+                    COOLDOWN_STORAGE_CATEGORY,
+                    stack -> true
+            )
     );
     public static final RegistryObject<Enchantment> ENDER_PEARL_SAVER = ENCHANTMENTS.register(
             "ender_pearl_saver",
-            () -> new CaneEnchantment(Enchantment.Rarity.RARE, stack ->
-                    stack.getItem() instanceof WalkingCaneItem cane && cane.supportsEnderPearlSaver())
+            () -> new CaneEnchantment(
+                    Enchantment.Rarity.RARE,
+                    ENDER_PEARL_SAVER_CATEGORY,
+                    stack -> stack.getItem() instanceof WalkingCaneItem cane && cane.supportsEnderPearlSaver()
+            )
     );
 
     public static int level(ItemStack stack, RegistryObject<Enchantment> enchantment) {
@@ -39,9 +47,10 @@ public final class WalkingCaneEnchantments {
 
         private CaneEnchantment(
                 Rarity rarity,
+                EnchantmentCategory category,
                 java.util.function.Predicate<ItemStack> supported
         ) {
-            super(rarity, WALKING_CANE_CATEGORY, new EquipmentSlot[]{
+            super(rarity, category, new EquipmentSlot[]{
                     EquipmentSlot.MAINHAND,
                     EquipmentSlot.OFFHAND
             });

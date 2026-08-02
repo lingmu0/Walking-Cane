@@ -25,5 +25,10 @@ public final class WalkingCaneNetwork {
                 .decoder(DashMessage::decode)
                 .consumerMainThread(DashMessage::handle)
                 .add();
+        CHANNEL.messageBuilder(CooldownUseMessage.class, 1, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CooldownUseMessage::encode)
+                .decoder(CooldownUseMessage::decode)
+                .consumerMainThread(CooldownUseMessage::handle)
+                .add();
     }
 }

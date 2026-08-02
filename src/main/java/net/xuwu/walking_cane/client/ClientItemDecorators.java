@@ -9,31 +9,31 @@ import net.minecraftforge.client.IItemDecorator;
 import net.minecraftforge.client.event.RegisterItemDecorationsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
-import net.xuwu.walking_cane.item.WalkingCaneItem;
+import net.xuwu.walking_cane.item.CooldownStorageManager;
 
-/** Renders the current stored dash charges in the top-right of cane icons. */
+/** Renders current cooldown-storage charges over item icons. */
 @Mod.EventBusSubscriber(
         modid = WalkingCane.MOD_ID,
         value = Dist.CLIENT,
         bus = Mod.EventBusSubscriber.Bus.MOD
 )
 public final class ClientItemDecorators {
-    private static final IItemDecorator DASH_STORAGE_DECORATOR =
-            ClientItemDecorators::renderDashStorage;
+    private static final IItemDecorator COOLDOWN_STORAGE_DECORATOR =
+            ClientItemDecorators::renderCooldownStorage;
 
     private ClientItemDecorators() {
     }
 
     @SubscribeEvent
     public static void registerItemDecorations(RegisterItemDecorationsEvent event) {
-        event.register(WalkingCane.DIAMOND_CANE.get(), DASH_STORAGE_DECORATOR);
-        event.register(WalkingCane.ENDER_CANE.get(), DASH_STORAGE_DECORATOR);
-        event.register(WalkingCane.NETHERITE_CANE.get(), DASH_STORAGE_DECORATOR);
+        ForgeRegistries.ITEMS.getValues()
+                .forEach(item -> event.register(item, COOLDOWN_STORAGE_DECORATOR));
     }
 
-    private static boolean renderDashStorage(
+    private static boolean renderCooldownStorage(
             GuiGraphics guiGraphics,
             Font font,
             ItemStack stack,
@@ -44,12 +44,12 @@ public final class ClientItemDecorators {
         if (minecraft.player == null
                 || WalkingCaneEnchantments.level(
                         stack,
-                        WalkingCaneEnchantments.DASH_STORAGE
+                        WalkingCaneEnchantments.COOLDOWN_STORAGE
                 ) <= 0) {
             return false;
         }
 
-        int storedCharges = WalkingCaneItem.getStoredDashCharges(stack);
+        int storedCharges = CooldownStorageManager.getStoredCharges(stack);
         if (storedCharges <= 0) {
             return false;
         }

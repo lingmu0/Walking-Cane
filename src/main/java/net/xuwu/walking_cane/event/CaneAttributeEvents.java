@@ -3,9 +3,11 @@ package net.xuwu.walking_cane.event;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
+import net.xuwu.walking_cane.item.CooldownStorageManager;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 
 import java.util.List;
@@ -17,6 +19,9 @@ public final class CaneAttributeEvents {
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
             WalkingCaneItem.refreshBothHandAttributes(event.player);
+            if (event.player instanceof ServerPlayer player) {
+                CooldownStorageManager.tick(player);
+            }
         }
     }
 
