@@ -4,9 +4,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,8 +23,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -47,11 +42,6 @@ public final class WalkingCaneItem extends Item {
     private static final ResourceLocation HELD_STEP_HEIGHT_BONUS_ID =
             ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_step_height_bonus");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final String COOLDOWN_STORAGE_TAG = WalkingCane.MOD_ID + ".cooldown_storage";
-    private static final String COOLDOWN_TYPE_TAG = WalkingCane.MOD_ID + ".cooldown_type";
-    private static final String COOLDOWN_QUEUE_TAG = WalkingCane.MOD_ID + ".cooldown_queue";
-    private static final int COOLDOWN_TYPE_DASH = 1;
-    private static final int COOLDOWN_TYPE_TELEPORT = 2;
 
     private final int speedPercent;
     private final double speedBonus;
@@ -209,51 +199,6 @@ public final class WalkingCaneItem extends Item {
     @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
         super.inventoryTick(stack, level, entity, slotId, isSelected);
-        if (level.isClientSide || !(entity instanceof ServerPlayer player) || !canDash()) {
-            return;
-        }
-
-        int storageLevel = WalkingCaneEnchantments.level(
-                player,
-                stack,
-                WalkingCaneEnchantments.COOLDOWN_STORAGE
-        );
-        if (storageLevel <= 0) {
-            return;
-        }
-
-        if (!hasStoredDashCharges(stack)) {
-            setStoredDashCharges(stack, storageLevel);
-            return;
-        }
-
-        int storedCharges = Math.min(getStoredDashCharges(stack), storageLevel);
-        if (storedCharges != getStoredDashCharges(stack)) {
-            setStoredDashCharges(stack, storedCharges);
-        }
-        if (player.getCooldowns().isOnCooldown(this)) {
-            return;
-        }
-
-        int replenished = storedCharges;
-        if (storedCharges < storageLevel) {
-            replenished++;
-            setStoredDashCharges(stack, replenished);
-        }
-
-        int cooldownType = pollQueuedCooldown(stack);
-        if (cooldownType == 0) {
-            if (replenished >= storageLevel) {
-                setCooldownType(stack, 0);
-                return;
-            }
-            cooldownType = getCooldownType(stack);
-            if (cooldownType == 0) {
-                cooldownType = COOLDOWN_TYPE_DASH;
-            }
-        }
-
-        startCooldown(player, stack, cooldownType);
     }
 
     @Override
@@ -306,18 +251,18 @@ public final class WalkingCaneItem extends Item {
                 stack,
                 WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
-        if (storageLevel > 0 && !hasStoredDashCharges(stack)) {
-            setStoredDashCharges(stack, storageLevel);
-        }
+        CooldownStorageManager.StorageState storage = storageLevel > 0
+                ? CooldownStorageManager.state(player, stack, storageLevel)
+                : null;
 
         boolean onCooldown = player.getCooldowns().isOnCooldown(cane);
-        int storedCharges = getStoredDashCharges(stack);
+        int storedCharges = storage == null ? 0 : storage.charges();
         if (onCooldown && (storageLevel <= 0 || storedCharges <= 0)) {
             return;
         }
 
         if (onCooldown && storageLevel > 0 && storedCharges > 0) {
-            setStoredDashCharges(stack, storedCharges - 1);
+            storage.setCharges(storedCharges - 1);
         }
 
         float strafe = Mth.clamp(rawStrafe, -1.0F, 1.0F);
@@ -351,10 +296,18 @@ public final class WalkingCaneItem extends Item {
         player.resetFallDistance();
 
         if (!onCooldown) {
-            setCooldownType(stack, COOLDOWN_TYPE_DASH);
+            if (storage != null) {
+                storage.setCooldownType(CooldownStorageManager.COOLDOWN_TYPE_DASH);
+                storage.setActiveCooldown(true);
+            }
             player.getCooldowns().addCooldown(cane, cane.dashCooldownTicks);
         } else {
-            enqueueCooldown(stack, COOLDOWN_TYPE_DASH);
+            if (storage != null) {
+                storage.enqueueCooldown(CooldownStorageManager.COOLDOWN_TYPE_DASH);
+            }
+        }
+        if (storage != null) {
+            CooldownStorageManager.sync(player, storage);
         }
         damageCane(stack, player, hand);
         player.awardStat(Stats.ITEM_USED.get(cane));
@@ -381,17 +334,17 @@ public final class WalkingCaneItem extends Item {
                 caneStack,
                 WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
-        if (storageLevel > 0 && !hasStoredDashCharges(caneStack)) {
-            setStoredDashCharges(caneStack, storageLevel);
-        }
+        CooldownStorageManager.StorageState storage = storageLevel > 0
+                ? CooldownStorageManager.state(player, caneStack, storageLevel)
+                : null;
 
         boolean onCooldown = player.getCooldowns().isOnCooldown(this);
-        int storedCharges = getStoredDashCharges(caneStack);
+        int storedCharges = storage == null ? 0 : storage.charges();
         if (onCooldown && (storageLevel <= 0 || storedCharges <= 0)) {
             return;
         }
         if (onCooldown && storageLevel > 0 && storedCharges > 0) {
-            setStoredDashCharges(caneStack, storedCharges - 1);
+            storage.setCharges(storedCharges - 1);
         }
 
         InteractionHand consumableHand = caneHand == InteractionHand.MAIN_HAND
@@ -474,9 +427,18 @@ public final class WalkingCaneItem extends Item {
             consumables.shrink(consumedCount);
         }
         if (onCooldown) {
-            enqueueCooldown(caneStack, COOLDOWN_TYPE_TELEPORT);
+            if (storage != null) {
+                storage.enqueueCooldown(CooldownStorageManager.COOLDOWN_TYPE_TELEPORT);
+            }
         } else {
-            startCooldown(player, caneStack, COOLDOWN_TYPE_TELEPORT);
+            if (storage != null) {
+                storage.setCooldownType(CooldownStorageManager.COOLDOWN_TYPE_TELEPORT);
+                storage.setActiveCooldown(true);
+            }
+            startCooldown(player, this, CooldownStorageManager.COOLDOWN_TYPE_TELEPORT);
+        }
+        if (storage != null) {
+            CooldownStorageManager.sync(player, storage);
         }
         player.awardStat(Stats.ITEM_USED.get(this));
     }
@@ -501,76 +463,66 @@ public final class WalkingCaneItem extends Item {
     }
 
     public static int getStoredDashCharges(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data == null ? 0 : data.copyTag().getInt(COOLDOWN_STORAGE_TAG);
+        return CooldownStorageManager.getStoredCharges(stack);
     }
 
-    private static boolean hasStoredDashCharges(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data != null && data.copyTag().contains(COOLDOWN_STORAGE_TAG);
-    }
-
-    private static int getCooldownType(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data == null ? 0 : data.copyTag().getInt(COOLDOWN_TYPE_TAG);
-    }
-
-    private static void setCooldownType(ItemStack stack, int type) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> {
-            if (type <= 0) {
-                data.remove(COOLDOWN_TYPE_TAG);
-            } else {
-                data.putInt(COOLDOWN_TYPE_TAG, type);
-            }
-        });
-    }
-
-    private static void enqueueCooldown(ItemStack stack, int type) {
-        if (type <= 0) {
+    void tickSharedCooldown(
+            ServerPlayer player,
+            CooldownStorageManager.StorageState state
+    ) {
+        if (player.getCooldowns().isOnCooldown(this)) {
+            state.setActiveCooldown(true);
+            CooldownStorageManager.sync(player, state);
             return;
         }
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> {
-            ListTag queue = data.getList(COOLDOWN_QUEUE_TAG, Tag.TAG_INT);
-            queue.add(IntTag.valueOf(type));
-            data.put(COOLDOWN_QUEUE_TAG, queue);
-        });
-    }
 
-    private static int pollQueuedCooldown(ItemStack stack) {
-        final int[] result = {0};
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> {
-            ListTag queue = data.getList(COOLDOWN_QUEUE_TAG, Tag.TAG_INT);
-            if (queue.isEmpty()) {
+        if (!state.activeCooldown()) {
+            if (state.charges() < state.maxCharges()) {
+                int cooldownType = state.cooldownType();
+                if (cooldownType == CooldownStorageManager.COOLDOWN_TYPE_NONE) {
+                    cooldownType = CooldownStorageManager.COOLDOWN_TYPE_DASH;
+                }
+                state.setCooldownType(cooldownType);
+                state.setActiveCooldown(true);
+                startCooldown(player, this, cooldownType);
+                CooldownStorageManager.sync(player, state);
+            }
+            return;
+        }
+
+        state.setActiveCooldown(false);
+        if (state.charges() < state.maxCharges()) {
+            state.setCharges(state.charges() + 1);
+        }
+
+        int cooldownType = state.pollCooldown();
+        if (cooldownType == CooldownStorageManager.COOLDOWN_TYPE_NONE) {
+            if (state.charges() >= state.maxCharges()) {
+                state.setCooldownType(CooldownStorageManager.COOLDOWN_TYPE_NONE);
+                CooldownStorageManager.sync(player, state);
                 return;
             }
-            result[0] = queue.getInt(0);
-            queue.remove(0);
-            if (queue.isEmpty()) {
-                data.remove(COOLDOWN_QUEUE_TAG);
-            } else {
-                data.put(COOLDOWN_QUEUE_TAG, queue);
+            cooldownType = state.cooldownType();
+            if (cooldownType == CooldownStorageManager.COOLDOWN_TYPE_NONE) {
+                cooldownType = CooldownStorageManager.COOLDOWN_TYPE_DASH;
             }
-        });
-        return result[0];
+        }
+
+        state.setCooldownType(cooldownType);
+        state.setActiveCooldown(true);
+        startCooldown(player, this, cooldownType);
+        CooldownStorageManager.sync(player, state);
     }
 
-    private static void startCooldown(ServerPlayer player, ItemStack stack, int type) {
-        if (!(stack.getItem() instanceof WalkingCaneItem cane)) {
-            return;
-        }
-        int cooldownTicks = type == COOLDOWN_TYPE_TELEPORT
+    private static void startCooldown(
+            ServerPlayer player,
+            WalkingCaneItem cane,
+            int type
+    ) {
+        int cooldownTicks = type == CooldownStorageManager.COOLDOWN_TYPE_TELEPORT
                 ? TELEPORT_COOLDOWN_TICKS
                 : cane.dashCooldownTicks;
-        setCooldownType(stack, type);
         player.getCooldowns().addCooldown(cane, cooldownTicks);
-    }
-
-    private static void setStoredDashCharges(ItemStack stack, int value) {
-        CustomData.update(
-                DataComponents.CUSTOM_DATA,
-                stack,
-                data -> data.putInt(COOLDOWN_STORAGE_TAG, Math.max(0, value))
-        );
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
