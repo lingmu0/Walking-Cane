@@ -43,7 +43,8 @@ public record DashPayload(InteractionHand hand, float strafe, float forward, boo
     public static void handle(DashPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             if (payload.teleport && player.level() instanceof ServerLevel serverLevel) {
-                if (player.getItemInHand(payload.hand).getItem() instanceof WalkingCaneItem cane) {
+                if (player.getItemInHand(payload.hand).getItem() instanceof WalkingCaneItem cane
+                        && cane.supportsEnderPearlSaver()) {
                     cane.tryTeleport(serverLevel, player, payload.hand);
                 }
             } else {
