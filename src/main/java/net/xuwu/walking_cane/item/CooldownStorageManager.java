@@ -297,12 +297,14 @@ public final class CooldownStorageManager {
 
     static List<ItemStack> matchingStacks(ServerPlayer player, Item item, ItemStack anchor) {
         List<ItemStack> result = new ArrayList<>();
+        boolean anchorFound = false;
         for (ItemStack stack : allInventoryStacks(player)) {
-            if (stack.getItem() == item && !result.contains(stack)) {
+            if (stack.getItem() == item) {
                 result.add(stack);
+                anchorFound |= stack == anchor;
             }
         }
-        if (anchor != null && anchor.getItem() == item && !result.contains(anchor)) {
+        if (anchor != null && anchor.getItem() == item && !anchorFound) {
             result.add(anchor);
         }
         return result;
