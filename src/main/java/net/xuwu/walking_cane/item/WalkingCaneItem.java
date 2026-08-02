@@ -47,7 +47,7 @@ public final class WalkingCaneItem extends Item {
     private static final ResourceLocation HELD_STEP_HEIGHT_BONUS_ID =
             ResourceLocation.fromNamespaceAndPath(WalkingCane.MOD_ID, "held_step_height_bonus");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final String DASH_STORAGE_TAG = WalkingCane.MOD_ID + ".dash_storage";
+    private static final String COOLDOWN_STORAGE_TAG = WalkingCane.MOD_ID + ".cooldown_storage";
     private static final String COOLDOWN_TYPE_TAG = WalkingCane.MOD_ID + ".cooldown_type";
     private static final String COOLDOWN_QUEUE_TAG = WalkingCane.MOD_ID + ".cooldown_queue";
     private static final int COOLDOWN_TYPE_DASH = 1;
@@ -216,7 +216,7 @@ public final class WalkingCaneItem extends Item {
         int storageLevel = WalkingCaneEnchantments.level(
                 player,
                 stack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel <= 0) {
             return;
@@ -304,7 +304,7 @@ public final class WalkingCaneItem extends Item {
         int storageLevel = WalkingCaneEnchantments.level(
                 player,
                 stack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel > 0 && !hasStoredDashCharges(stack)) {
             setStoredDashCharges(stack, storageLevel);
@@ -379,7 +379,7 @@ public final class WalkingCaneItem extends Item {
         int storageLevel = WalkingCaneEnchantments.level(
                 player,
                 caneStack,
-                WalkingCaneEnchantments.DASH_STORAGE
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
         if (storageLevel > 0 && !hasStoredDashCharges(caneStack)) {
             setStoredDashCharges(caneStack, storageLevel);
@@ -495,14 +495,19 @@ public final class WalkingCaneItem extends Item {
         return canTeleport;
     }
 
+    @Override
+    public int getEnchantmentValue() {
+        return 15;
+    }
+
     public static int getStoredDashCharges(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data == null ? 0 : data.copyTag().getInt(DASH_STORAGE_TAG);
+        return data == null ? 0 : data.copyTag().getInt(COOLDOWN_STORAGE_TAG);
     }
 
     private static boolean hasStoredDashCharges(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data != null && data.copyTag().contains(DASH_STORAGE_TAG);
+        return data != null && data.copyTag().contains(COOLDOWN_STORAGE_TAG);
     }
 
     private static int getCooldownType(ItemStack stack) {
@@ -564,7 +569,7 @@ public final class WalkingCaneItem extends Item {
         CustomData.update(
                 DataComponents.CUSTOM_DATA,
                 stack,
-                data -> data.putInt(DASH_STORAGE_TAG, Math.max(0, value))
+                data -> data.putInt(COOLDOWN_STORAGE_TAG, Math.max(0, value))
         );
     }
 

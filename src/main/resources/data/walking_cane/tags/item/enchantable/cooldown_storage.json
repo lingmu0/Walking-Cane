@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
+    "#c:enchantables",
+    "walking_cane:wooden_cane",
+    "walking_cane:iron_cane",
     "walking_cane:diamond_cane",
     "walking_cane:ender_cane",
     "walking_cane:netherite_cane"

@@ -16,6 +16,7 @@ import net.xuwu.walking_cane.event.CaneAttributeEvents;
 import net.xuwu.walking_cane.event.CaneInteractionEvents;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import net.xuwu.walking_cane.network.DashPayload;
+import net.xuwu.walking_cane.network.CooldownUsePayload;
 
 @Mod(WalkingCane.MOD_ID)
 public final class WalkingCane {
@@ -84,6 +85,11 @@ public final class WalkingCane {
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar("2")
-                .playToServer(DashPayload.TYPE, DashPayload.STREAM_CODEC, DashPayload::handle);
+                .playToServer(DashPayload.TYPE, DashPayload.STREAM_CODEC, DashPayload::handle)
+                .playToServer(
+                        CooldownUsePayload.TYPE,
+                        CooldownUsePayload.STREAM_CODEC,
+                        CooldownUsePayload::handle
+                );
     }
 }

@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "walking_cane:dash_storage",
+    "walking_cane:cooldown_storage",
     "walking_cane:ender_pearl_saver"
   ]
 }
