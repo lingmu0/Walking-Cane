@@ -4,8 +4,6 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -46,7 +44,7 @@ public final class WalkingCaneItem extends Item {
     private static final UUID STEP_HEIGHT_MODIFIER_ID =
             UUID.fromString("b5d81e27-3579-42bd-a02a-4759df07b99f");
     private static final int TELEPORT_COOLDOWN_TICKS = 200;
-    private static final String DASH_STORAGE_TAG_PREFIX = "walking_cane.dash_storage.";
+    private static final String DASH_STORAGE_TAG = "walking_cane.dash_storage";
 
     private final Multimap<Attribute, AttributeModifier> heldModifiers;
     private final double speedBonus;
@@ -261,13 +259,13 @@ public final class WalkingCaneItem extends Item {
                 WalkingCaneEnchantments.DASH_STORAGE
         );
         if (player.getCooldowns().isOnCooldown(cane)) {
-            storeDashCharge(player, stack, hand, storageLevel);
+            storeDashCharge(stack, storageLevel);
             return;
         }
 
-        int storedCharges = getStoredDashCharges(player, stack, hand);
+        int storedCharges = getStoredDashCharges(stack);
         if (storedCharges > 0) {
-            setStoredDashCharges(player, stack, hand, storedCharges - 1);
+            setStoredDashCharges(stack, storedCharges - 1);
         }
 
         float strafe = Mth.clamp(rawStrafe, -1.0F, 1.0F);
@@ -427,50 +425,29 @@ public final class WalkingCaneItem extends Item {
         return canTeleport;
     }
 
-    private static void storeDashCharge(
-            ServerPlayer player,
-            ItemStack stack,
-            InteractionHand hand,
-            int storageLevel
-    ) {
+    private static void storeDashCharge(ItemStack stack, int storageLevel) {
         if (storageLevel <= 0) {
             return;
         }
 
-        int stored = getStoredDashCharges(player, stack, hand);
+        int stored = getStoredDashCharges(stack);
         if (stored < storageLevel) {
-            setStoredDashCharges(player, stack, hand, stored + 1);
+            setStoredDashCharges(stack, stored + 1);
         }
     }
 
-    private static int getStoredDashCharges(
-            ServerPlayer player,
-            ItemStack stack,
-            InteractionHand hand
-    ) {
-        return player.getPersistentData().getInt(dashStorageKey(stack, hand));
+    public static int getStoredDashCharges(ItemStack stack) {
+        return stack.hasTag() ? stack.getTag().getInt(DASH_STORAGE_TAG) : 0;
     }
 
-    private static void setStoredDashCharges(
-            ServerPlayer player,
-            ItemStack stack,
-            InteractionHand hand,
-            int value
-    ) {
-        String key = dashStorageKey(stack, hand);
-        CompoundTag data = player.getPersistentData();
+    private static void setStoredDashCharges(ItemStack stack, int value) {
         if (value <= 0) {
-            data.remove(key);
+            if (stack.hasTag()) {
+                stack.getTag().remove(DASH_STORAGE_TAG);
+            }
         } else {
-            data.putInt(key, value);
+            stack.getOrCreateTag().putInt(DASH_STORAGE_TAG, value);
         }
-    }
-
-    private static String dashStorageKey(ItemStack stack, InteractionHand hand) {
-        return DASH_STORAGE_TAG_PREFIX
-                + BuiltInRegistries.ITEM.getKey(stack.getItem())
-                + "."
-                + hand.name().toLowerCase(Locale.ROOT);
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
