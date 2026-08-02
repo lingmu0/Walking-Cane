@@ -401,6 +401,14 @@ public final class WalkingCaneItem extends Item {
                 && WalkingCaneConfig.DASH_STRENGTH > 0.0;
     }
 
+    public boolean supportsDashStorage() {
+        return canDash();
+    }
+
+    public boolean supportsEnderPearlSaver() {
+        return canTeleport;
+    }
+
     private static void storeDashCharge(
             ServerPlayer player,
             ItemStack stack,
