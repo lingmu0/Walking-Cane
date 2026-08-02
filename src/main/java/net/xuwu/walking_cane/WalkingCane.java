@@ -14,6 +14,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.xuwu.walking_cane.event.CaneAttributeEvents;
 import net.xuwu.walking_cane.event.CaneInteractionEvents;
+import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import net.xuwu.walking_cane.network.WalkingCaneNetwork;
 
@@ -60,6 +61,7 @@ public final class WalkingCane {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ITEMS.register(modEventBus);
         CREATIVE_TABS.register(modEventBus);
+        WalkingCaneEnchantments.ENCHANTMENTS.register(modEventBus);
 
         WalkingCaneNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(CaneAttributeEvents::onPlayerTick);
