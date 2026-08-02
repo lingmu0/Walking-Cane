@@ -444,7 +444,7 @@ public final class WalkingCaneItem extends Item {
         return DASH_STORAGE_TAG_PREFIX
                 + BuiltInRegistries.ITEM.getKey(stack.getItem())
                 + "."
-                + hand.getSerializedName();
+                + hand.name().toLowerCase(Locale.ROOT);
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
