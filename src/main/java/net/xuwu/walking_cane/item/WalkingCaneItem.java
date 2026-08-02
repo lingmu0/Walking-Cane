@@ -459,11 +459,11 @@ public final class WalkingCaneItem extends Item {
     }
 
     private static void setStoredDashCharges(ItemStack stack, int value) {
-        if (value <= 0) {
-            CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> data.remove(DASH_STORAGE_TAG));
-        } else {
-            CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> data.putInt(DASH_STORAGE_TAG, value));
-        }
+        CustomData.update(
+                DataComponents.CUSTOM_DATA,
+                stack,
+                data -> data.putInt(DASH_STORAGE_TAG, Math.max(0, value))
+        );
     }
 
     private static void damageCane(ItemStack stack, ServerPlayer player, InteractionHand hand) {
