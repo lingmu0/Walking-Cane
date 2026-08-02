@@ -86,11 +86,18 @@ public final class ClientInputEvents {
         }
 
         InteractionHand hand = event.getHand();
+        ItemStack stack = player.getItemInHand(hand);
+        if (!(stack.getItem() instanceof WalkingCaneItem)) {
+            if (isGenericCapturable(player, hand)) {
+                ClientCooldownUseSender.send(hand);
+                event.setCanceled(true);
+            }
+            return;
+        }
         if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
         }
 
-        ItemStack stack = player.getItemInHand(hand);
         if (!(stack.getItem() instanceof WalkingCaneItem cane)
                 || !cane.supportsDashStorage()
                 || WalkingCaneEnchantments.level(
@@ -100,11 +107,6 @@ public final class ClientInputEvents {
                 ) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
-            InteractionHand genericHand = findGenericHand(player);
-            if (genericHand != null) {
-                ClientCooldownUseSender.send(genericHand);
-                event.setCanceled(true);
-            }
             return;
         }
 
