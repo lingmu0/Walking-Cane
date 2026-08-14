@@ -11,7 +11,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
-import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.CooldownStorageManager;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import org.lwjgl.glfw.GLFW;
@@ -104,10 +103,7 @@ public final class ClientInputEvents {
 
         if (!(stack.getItem() instanceof WalkingCaneItem cane)
                 || !cane.supportsDashStorage()
-                || WalkingCaneEnchantments.level(
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) <= 0
+                || CooldownStorageManager.level(stack) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
             return;
@@ -135,10 +131,7 @@ public final class ClientInputEvents {
         ItemStack stack = player.getItemInHand(hand);
         return stack.getItem() instanceof WalkingCaneItem cane
                 && cane.supportsDashStorage()
-                && WalkingCaneEnchantments.level(
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) > 0
+                && CooldownStorageManager.level(stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
     }
@@ -161,10 +154,7 @@ public final class ClientInputEvents {
         ItemStack stack = player.getItemInHand(hand);
         return stack.getItem() instanceof WalkingCaneItem cane
                 && cane.supportsEnderPearlSaver()
-                && WalkingCaneEnchantments.level(
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) > 0
+                && CooldownStorageManager.level(stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
     }
@@ -181,9 +171,10 @@ public final class ClientInputEvents {
 
     private static boolean isGenericCapturable(LocalPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        int storageLevel = CooldownStorageManager.level(stack);
         return !stack.isEmpty()
                 && !(stack.getItem() instanceof WalkingCaneItem)
-                && CooldownStorageManager.level(stack) > 0
+                && storageLevel > 0
                 && CooldownStorageManager.getStoredCharges(stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem());
     }

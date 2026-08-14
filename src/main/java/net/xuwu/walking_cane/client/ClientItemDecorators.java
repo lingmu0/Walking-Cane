@@ -11,7 +11,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.xuwu.walking_cane.WalkingCane;
-import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.CooldownStorageManager;
 
 /** Renders current cooldown-storage charges over item icons. */
@@ -42,10 +41,7 @@ public final class ClientItemDecorators {
     ) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null
-                || WalkingCaneEnchantments.level(
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) <= 0) {
+                || CooldownStorageManager.level(stack) <= 0) {
             return false;
         }
 

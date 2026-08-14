@@ -41,7 +41,17 @@ public final class CooldownStorageManager {
     }
 
     public static int level(ItemStack stack) {
-        return WalkingCaneEnchantments.level(stack, WalkingCaneEnchantments.COOLDOWN_STORAGE);
+        int cooldownStorageLevel = WalkingCaneEnchantments.level(
+                stack,
+                WalkingCaneEnchantments.COOLDOWN_STORAGE
+        );
+        if (stack.getItem() instanceof WalkingCaneItem cane && cane.supportsDashStorage()) {
+            return Math.max(
+                    cooldownStorageLevel,
+                    WalkingCaneEnchantments.level(stack, WalkingCaneEnchantments.DASH_STORAGE)
+            );
+        }
+        return cooldownStorageLevel;
     }
 
     /** Reads the stack-local charge value on either logical side. */

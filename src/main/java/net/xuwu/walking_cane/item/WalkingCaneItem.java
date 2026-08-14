@@ -259,10 +259,7 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
-        int storageLevel = WalkingCaneEnchantments.level(
-                stack,
-                WalkingCaneEnchantments.COOLDOWN_STORAGE
-        );
+        int storageLevel = CooldownStorageManager.level(stack);
         CooldownStorageManager.StorageState storage = storageLevel > 0
                 ? CooldownStorageManager.state(player, stack, storageLevel)
                 : null;
@@ -341,10 +338,7 @@ public final class WalkingCaneItem extends Item {
         }
 
         ItemStack caneStack = player.getItemInHand(caneHand);
-        int storageLevel = WalkingCaneEnchantments.level(
-                caneStack,
-                WalkingCaneEnchantments.COOLDOWN_STORAGE
-        );
+        int storageLevel = CooldownStorageManager.level(caneStack);
         CooldownStorageManager.StorageState storage = storageLevel > 0
                 ? CooldownStorageManager.state(player, caneStack, storageLevel)
                 : null;
