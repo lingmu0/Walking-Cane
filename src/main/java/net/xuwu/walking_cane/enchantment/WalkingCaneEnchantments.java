@@ -15,8 +15,10 @@ import net.xuwu.walking_cane.item.WalkingCaneItem;
 public final class WalkingCaneEnchantments {
     private static final EnchantmentCategory COOLDOWN_STORAGE_CATEGORY =
             EnchantmentCategory.create("cooldown_storage", item -> true);
-    private static final EnchantmentCategory DASH_STORAGE_CATEGORY =
-            EnchantmentCategory.create("dash_storage", item -> item instanceof WalkingCaneItem);
+    private static final EnchantmentCategory DISPLACEMENT_STORAGE_CATEGORY =
+            EnchantmentCategory.create("displacement_storage", item -> item instanceof WalkingCaneItem);
+    private static final EnchantmentCategory DISPLACEMENT_COOLDOWN_REDUCTION_CATEGORY =
+            EnchantmentCategory.create("displacement_cooldown_reduction", item -> item instanceof WalkingCaneItem);
     private static final EnchantmentCategory ENDER_PEARL_SAVER_CATEGORY =
             EnchantmentCategory.create("ender_pearl_saver", item -> item instanceof WalkingCaneItem);
 
@@ -30,17 +32,30 @@ public final class WalkingCaneEnchantments {
                     COOLDOWN_STORAGE_CATEGORY,
                     stack -> true,
                     true,
+                    true,
+                    false
+            )
+    );
+    public static final RegistryObject<Enchantment> DISPLACEMENT_STORAGE = ENCHANTMENTS.register(
+            "displacement_storage",
+            () -> new CaneEnchantment(
+                    Enchantment.Rarity.UNCOMMON,
+                    DISPLACEMENT_STORAGE_CATEGORY,
+                    stack -> stack.getItem() instanceof WalkingCaneItem cane
+                            && cane.supportsDisplacementStorage(),
+                    true,
+                    false,
                     true
             )
     );
-    public static final RegistryObject<Enchantment> DASH_STORAGE = ENCHANTMENTS.register(
-            "dash_storage",
+    public static final RegistryObject<Enchantment> DISPLACEMENT_COOLDOWN_REDUCTION = ENCHANTMENTS.register(
+            "displacement_cooldown_reduction",
             () -> new CaneEnchantment(
-                    Enchantment.Rarity.UNCOMMON,
-                    DASH_STORAGE_CATEGORY,
-                    stack -> stack.getItem() instanceof WalkingCaneItem cane
-                            && cane.supportsDashStorage(),
-                    true,
+                    Enchantment.Rarity.RARE,
+                    DISPLACEMENT_COOLDOWN_REDUCTION_CATEGORY,
+                    stack -> stack.getItem() instanceof WalkingCaneItem,
+                    false,
+                    false,
                     false
             )
     );
@@ -51,7 +66,8 @@ public final class WalkingCaneEnchantments {
                     ENDER_PEARL_SAVER_CATEGORY,
                     stack -> stack.getItem() instanceof WalkingCaneItem cane && cane.supportsEnderPearlSaver(),
                     false,
-                    false
+                    false,
+                    true
             )
     );
 
@@ -63,13 +79,15 @@ public final class WalkingCaneEnchantments {
         private final java.util.function.Predicate<ItemStack> supported;
         private final boolean storageEnchantment;
         private final boolean treasureOnly;
+        private final boolean availableAtEnchantingTable;
 
         private CaneEnchantment(
                 Rarity rarity,
                 EnchantmentCategory category,
                 java.util.function.Predicate<ItemStack> supported,
                 boolean storageEnchantment,
-                boolean treasureOnly
+                boolean treasureOnly,
+                boolean availableAtEnchantingTable
         ) {
             super(rarity, category, new EquipmentSlot[]{
                     EquipmentSlot.MAINHAND,
@@ -78,6 +96,7 @@ public final class WalkingCaneEnchantments {
             this.supported = supported;
             this.storageEnchantment = storageEnchantment;
             this.treasureOnly = treasureOnly;
+            this.availableAtEnchantingTable = availableAtEnchantingTable;
         }
 
         @Override
@@ -102,7 +121,7 @@ public final class WalkingCaneEnchantments {
 
         @Override
         public boolean canApplyAtEnchantingTable(ItemStack stack) {
-            return !treasureOnly && supported.test(stack);
+            return availableAtEnchantingTable && !treasureOnly && supported.test(stack);
         }
 
         @Override

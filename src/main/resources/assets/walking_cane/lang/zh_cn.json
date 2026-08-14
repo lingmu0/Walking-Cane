@@ -10,6 +10,7 @@
   "tooltip.walking_cane.teleport": "潜行 + 右键：传送至前方坐标的露天表面，并消耗另一只手中的所有配置物品",
   "tooltip.walking_cane.teleport_range": "距离：基础 %s 格，每个消耗物增加 %s 格；冷却 10 秒",
   "enchantment.walking_cane.cooldown_storage": "冷却存储",
-  "enchantment.walking_cane.dash_storage": "冲刺存储",
+  "enchantment.walking_cane.displacement_storage": "位移存储",
+  "enchantment.walking_cane.displacement_cooldown_reduction": "位移冷缩",
   "enchantment.walking_cane.ender_pearl_saver": "末影恩赐"
 }

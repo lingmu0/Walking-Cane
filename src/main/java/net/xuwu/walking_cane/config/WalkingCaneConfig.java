@@ -25,14 +25,17 @@ public final class WalkingCaneConfig {
     private static final List<String> DEFAULT_TELEPORT_CONSUMABLE_ITEMS =
             List.of("minecraft:ender_pearl");
     private static final double DEFAULT_DASH_STRENGTH = 2.5;
+    private static final double DEFAULT_DISPLACEMENT_COOLDOWN_REDUCTION = 0.10;
     private static final double DEFAULT_TELEPORT_BASE_DISTANCE = 50.0;
     private static final double DEFAULT_TELEPORT_DISTANCE_PER_PEARL = 100.0;
 
     private static final double MAX_DASH_STRENGTH = 20.0;
+    private static final double MAX_DISPLACEMENT_COOLDOWN_REDUCTION = 1.0;
     private static final double MAX_TELEPORT_DISTANCE = 1_000_000.0;
 
     public static final HandMode HAND_MODE;
     public static final double DASH_STRENGTH;
+    public static final double DISPLACEMENT_COOLDOWN_REDUCTION;
     public static final double TELEPORT_BASE_DISTANCE;
     public static final double TELEPORT_DISTANCE_PER_PEARL;
     public static final Set<ResourceLocation> TELEPORT_CONSUMABLE_ITEMS;
@@ -41,13 +44,15 @@ public final class WalkingCaneConfig {
         LoadedValues values = load();
         HAND_MODE = values.handMode();
         DASH_STRENGTH = values.dashStrength();
+        DISPLACEMENT_COOLDOWN_REDUCTION = values.displacementCooldownReduction();
         TELEPORT_BASE_DISTANCE = values.teleportBaseDistance();
         TELEPORT_DISTANCE_PER_PEARL = values.teleportDistancePerPearl();
         TELEPORT_CONSUMABLE_ITEMS = Set.copyOf(values.teleportConsumableItems());
         LOGGER.info(
-                "Loaded Walking Cane config: hand_mode={}, dash_strength={}, teleport_base_distance={}, teleport_distance_per_pearl={}, teleport_consumable_items={}",
+                "Loaded Walking Cane config: hand_mode={}, dash_strength={}, displacement_cooldown_reduction={}, teleport_base_distance={}, teleport_distance_per_pearl={}, teleport_consumable_items={}",
                 HAND_MODE,
                 DASH_STRENGTH,
+                DISPLACEMENT_COOLDOWN_REDUCTION,
                 TELEPORT_BASE_DISTANCE,
                 TELEPORT_DISTANCE_PER_PEARL,
                 TELEPORT_CONSUMABLE_ITEMS
@@ -71,6 +76,7 @@ public final class WalkingCaneConfig {
     private static LoadedValues load() {
         HandMode handMode = DEFAULT_HAND_MODE;
         double dashStrength = DEFAULT_DASH_STRENGTH;
+        double displacementCooldownReduction = DEFAULT_DISPLACEMENT_COOLDOWN_REDUCTION;
         double teleportBaseDistance = DEFAULT_TELEPORT_BASE_DISTANCE;
         double teleportDistancePerPearl = DEFAULT_TELEPORT_DISTANCE_PER_PEARL;
         List<ResourceLocation> teleportConsumableItems = defaultTeleportConsumableItems();
@@ -88,6 +94,13 @@ public final class WalkingCaneConfig {
                         0.0,
                         MAX_DASH_STRENGTH,
                         "dash_strength"
+                );
+                displacementCooldownReduction = readDouble(
+                        config.get("displacement_cooldown_reduction"),
+                        DEFAULT_DISPLACEMENT_COOLDOWN_REDUCTION,
+                        0.0,
+                        MAX_DISPLACEMENT_COOLDOWN_REDUCTION,
+                        "displacement_cooldown_reduction"
                 );
                 teleportBaseDistance = readDouble(
                         config.get("teleport_base_distance"),
@@ -117,6 +130,11 @@ public final class WalkingCaneConfig {
                         "dash_strength",
                         " Dash velocity multiplier. Range: 0.0 to 20.0. Requires a restart."
                 );
+                config.set("displacement_cooldown_reduction", displacementCooldownReduction);
+                config.setComment(
+                        "displacement_cooldown_reduction",
+                        " Cooldown reduction per level of the Displacement Cooldown Reduction enchantment. 0.10 = 10%. Range: 0.0 to 1.0. Requires a restart."
+                );
                 config.set("teleport_base_distance", teleportBaseDistance);
                 config.setComment(
                         "teleport_base_distance",
@@ -143,6 +161,7 @@ public final class WalkingCaneConfig {
             LOGGER.error("Failed to load {}, using default walking cane settings", path, exception);
             handMode = DEFAULT_HAND_MODE;
             dashStrength = DEFAULT_DASH_STRENGTH;
+            displacementCooldownReduction = DEFAULT_DISPLACEMENT_COOLDOWN_REDUCTION;
             teleportBaseDistance = DEFAULT_TELEPORT_BASE_DISTANCE;
             teleportDistancePerPearl = DEFAULT_TELEPORT_DISTANCE_PER_PEARL;
             teleportConsumableItems = defaultTeleportConsumableItems();
@@ -151,6 +170,7 @@ public final class WalkingCaneConfig {
         return new LoadedValues(
                 handMode,
                 dashStrength,
+                displacementCooldownReduction,
                 teleportBaseDistance,
                 teleportDistancePerPearl,
                 teleportConsumableItems
@@ -258,6 +278,7 @@ public final class WalkingCaneConfig {
     private record LoadedValues(
             HandMode handMode,
             double dashStrength,
+            double displacementCooldownReduction,
             double teleportBaseDistance,
             double teleportDistancePerPearl,
             List<ResourceLocation> teleportConsumableItems

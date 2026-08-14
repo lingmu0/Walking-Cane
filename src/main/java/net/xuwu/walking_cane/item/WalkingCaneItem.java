@@ -309,7 +309,7 @@ public final class WalkingCaneItem extends Item {
                 storage.setCooldownType(CooldownStorageManager.COOLDOWN_TYPE_DASH);
                 storage.setActiveCooldown(true);
             }
-            player.getCooldowns().addCooldown(cane, cane.dashCooldownTicks);
+            startCooldown(player, cane, CooldownStorageManager.COOLDOWN_TYPE_DASH);
         } else {
             if (storage != null) {
                 storage.enqueueCooldown(CooldownStorageManager.COOLDOWN_TYPE_DASH);
@@ -460,7 +460,7 @@ public final class WalkingCaneItem extends Item {
                 && WalkingCaneConfig.DASH_STRENGTH > 0.0;
     }
 
-    public boolean supportsDashStorage() {
+    public boolean supportsDisplacementStorage() {
         return canDash();
     }
 
@@ -528,9 +528,18 @@ public final class WalkingCaneItem extends Item {
             WalkingCaneItem cane,
             int type
     ) {
-        int cooldownTicks = type == CooldownStorageManager.COOLDOWN_TYPE_TELEPORT
+        int baseCooldownTicks = type == CooldownStorageManager.COOLDOWN_TYPE_TELEPORT
                 ? TELEPORT_COOLDOWN_TICKS
                 : cane.dashCooldownTicks;
+        int reductionLevel = CooldownStorageManager.displacementCooldownReductionLevel(player, cane);
+        double reduction = Math.min(
+                1.0,
+                reductionLevel * WalkingCaneConfig.DISPLACEMENT_COOLDOWN_REDUCTION
+        );
+        int cooldownTicks = Math.max(
+                1,
+                (int) Math.ceil(baseCooldownTicks * (1.0 - reduction))
+        );
         player.getCooldowns().addCooldown(cane, cooldownTicks);
     }
 

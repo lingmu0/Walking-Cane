@@ -45,13 +45,27 @@ public final class CooldownStorageManager {
                 stack,
                 WalkingCaneEnchantments.COOLDOWN_STORAGE
         );
-        if (stack.getItem() instanceof WalkingCaneItem cane && cane.supportsDashStorage()) {
+        if (stack.getItem() instanceof WalkingCaneItem cane && cane.supportsDisplacementStorage()) {
             return Math.max(
                     cooldownStorageLevel,
-                    WalkingCaneEnchantments.level(stack, WalkingCaneEnchantments.DASH_STORAGE)
+                    WalkingCaneEnchantments.level(stack, WalkingCaneEnchantments.DISPLACEMENT_STORAGE)
             );
         }
         return cooldownStorageLevel;
+    }
+
+    static int displacementCooldownReductionLevel(ServerPlayer player, Item item) {
+        int level = 0;
+        for (ItemStack stack : matchingStacks(player, item, null)) {
+            level = Math.max(
+                    level,
+                    WalkingCaneEnchantments.level(
+                            stack,
+                            WalkingCaneEnchantments.DISPLACEMENT_COOLDOWN_REDUCTION
+                    )
+            );
+        }
+        return level;
     }
 
     /** Reads the stack-local charge value on either logical side. */
