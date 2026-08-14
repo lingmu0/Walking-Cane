@@ -44,6 +44,17 @@ public final class CooldownStorageManager {
     }
 
     public static int level(LivingEntity entity, ItemStack stack) {
+        if (stack.getItem() instanceof WalkingCaneItem) {
+            int dashStorageLevel = WalkingCaneEnchantments.level(
+                    entity,
+                    stack,
+                    WalkingCaneEnchantments.DASH_STORAGE
+            );
+            if (dashStorageLevel > 0) {
+                return dashStorageLevel;
+            }
+        }
+
         return WalkingCaneEnchantments.level(
                 entity,
                 stack,

@@ -11,7 +11,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.config.WalkingCaneConfig;
-import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 import net.xuwu.walking_cane.item.CooldownStorageManager;
 import org.lwjgl.glfw.GLFW;
@@ -100,11 +99,7 @@ public final class ClientInputEvents {
 
         if (!(stack.getItem() instanceof WalkingCaneItem cane)
                 || !cane.supportsDashStorage()
-                || WalkingCaneEnchantments.level(
-                        player,
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) <= 0
+                || CooldownStorageManager.level(player, stack) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
             return;
@@ -132,11 +127,7 @@ public final class ClientInputEvents {
         ItemStack stack = player.getItemInHand(hand);
         return stack.getItem() instanceof WalkingCaneItem cane
                 && cane.supportsDashStorage()
-                && WalkingCaneEnchantments.level(
-                        player,
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) > 0
+                && CooldownStorageManager.level(player, stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
     }
@@ -159,11 +150,7 @@ public final class ClientInputEvents {
         ItemStack stack = player.getItemInHand(hand);
         return stack.getItem() instanceof WalkingCaneItem cane
                 && cane.supportsEnderPearlSaver()
-                && WalkingCaneEnchantments.level(
-                        player,
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) > 0
+                && CooldownStorageManager.level(player, stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;
     }

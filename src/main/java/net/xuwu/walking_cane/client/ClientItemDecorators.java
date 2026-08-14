@@ -12,7 +12,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.IItemDecorator;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.xuwu.walking_cane.WalkingCane;
-import net.xuwu.walking_cane.enchantment.WalkingCaneEnchantments;
 import net.xuwu.walking_cane.item.CooldownStorageManager;
 
 /** Renders current cooldown-storage charges over item icons. */
@@ -44,11 +43,7 @@ public final class ClientItemDecorators {
     ) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null
-                || WalkingCaneEnchantments.level(
-                        minecraft.player,
-                        stack,
-                        WalkingCaneEnchantments.COOLDOWN_STORAGE
-                ) <= 0) {
+                || CooldownStorageManager.level(minecraft.player, stack) <= 0) {
             return false;
         }
 
