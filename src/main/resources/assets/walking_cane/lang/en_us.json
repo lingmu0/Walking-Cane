@@ -11,6 +11,7 @@
   "tooltip.walking_cane.teleport": "Sneak + right-click: teleport to the surface ahead, consuming all configured items in the other hand",
   "tooltip.walking_cane.teleport_range": "Range: %s + %s blocks per consumed item; 10s cooldown",
   "enchantment.walking_cane.cooldown_storage": "Cooldown Storage",
-  "enchantment.walking_cane.dash_storage": "Dash Storage",
+  "enchantment.walking_cane.displacement_storage": "Displacement Storage",
+  "enchantment.walking_cane.displacement_cooldown_reduction": "Displacement Cooldown Reduction",
   "enchantment.walking_cane.ender_pearl_saver": "Ender’s Grace"
 }

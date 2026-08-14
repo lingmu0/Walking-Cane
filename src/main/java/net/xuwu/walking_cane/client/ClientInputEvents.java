@@ -98,7 +98,7 @@ public final class ClientInputEvents {
         }
 
         if (!(stack.getItem() instanceof WalkingCaneItem cane)
-                || !cane.supportsDashStorage()
+                || !cane.supportsDisplacementStorage()
                 || CooldownStorageManager.level(player, stack) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
@@ -126,7 +126,7 @@ public final class ClientInputEvents {
 
         ItemStack stack = player.getItemInHand(hand);
         return stack.getItem() instanceof WalkingCaneItem cane
-                && cane.supportsDashStorage()
+                && cane.supportsDisplacementStorage()
                 && CooldownStorageManager.level(player, stack) > 0
                 && player.getCooldowns().isOnCooldown(stack.getItem())
                 && WalkingCaneItem.getStoredDashCharges(stack) > 0;

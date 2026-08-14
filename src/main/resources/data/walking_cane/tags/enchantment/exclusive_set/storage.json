@@ -2,6 +2,6 @@
   "replace": false,
   "values": [
     "walking_cane:cooldown_storage",
-    "walking_cane:dash_storage"
+    "walking_cane:displacement_storage"
   ]
 }

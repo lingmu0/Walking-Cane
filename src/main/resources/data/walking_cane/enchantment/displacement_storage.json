@@ -1,12 +1,12 @@
 {
   "anvil_cost": 2,
-  "description": { "translate": "enchantment.walking_cane.dash_storage" },
+  "description": { "translate": "enchantment.walking_cane.displacement_storage" },
   "effects": {},
   "exclusive_set": "#walking_cane:exclusive_set/storage",
   "max_cost": { "base": 12, "per_level_above_first": 10 },
   "max_level": 3,
   "min_cost": { "base": 1, "per_level_above_first": 10 },
   "slots": [ "mainhand", "offhand" ],
-  "supported_items": "#walking_cane:enchantable/dash_storage",
+  "supported_items": "#walking_cane:enchantable/displacement_storage",
   "weight": 5
 }
