@@ -1,5 +1,7 @@
 # Walking Cane
 
+语言 / Language: 中文 · [English](README_EN.md)
+
 Walking Cane 是一个 Forge 1.20.1 / NeoForge 1.21.1 模组，提供不同材质的步行手杖，以及冲刺、传送和冷却存储等附魔能力。
 
 ## 手杖功能
