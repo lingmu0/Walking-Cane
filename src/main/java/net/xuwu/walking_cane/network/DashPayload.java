@@ -11,14 +11,20 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.xuwu.walking_cane.WalkingCane;
 import net.xuwu.walking_cane.item.WalkingCaneItem;
 
-public record DashPayload(InteractionHand hand, float strafe, float forward, boolean teleport)
+public record DashPayload(
+        InteractionHand hand,
+        float strafe,
+        float forward,
+        boolean teleport,
+        boolean forceDash
+)
         implements CustomPacketPayload {
     public DashPayload(InteractionHand hand, float strafe, float forward) {
-        this(hand, strafe, forward, false);
+        this(hand, strafe, forward, false, false);
     }
 
     public static DashPayload teleport(InteractionHand hand) {
-        return new DashPayload(hand, 0.0F, 0.0F, true);
+        return new DashPayload(hand, 0.0F, 0.0F, true, false);
     }
 
     public static final Type<DashPayload> TYPE = new Type<>(
@@ -31,11 +37,13 @@ public record DashPayload(InteractionHand hand, float strafe, float forward, boo
                 buffer.writeFloat(payload.strafe);
                 buffer.writeFloat(payload.forward);
                 buffer.writeBoolean(payload.teleport);
+                buffer.writeBoolean(payload.forceDash);
             },
             buffer -> new DashPayload(
                     buffer.readEnum(InteractionHand.class),
                     buffer.readFloat(),
                     buffer.readFloat(),
+                    buffer.readBoolean(),
                     buffer.readBoolean()
             )
     );
@@ -48,7 +56,13 @@ public record DashPayload(InteractionHand hand, float strafe, float forward, boo
                     cane.tryTeleport(serverLevel, player, payload.hand);
                 }
             } else {
-                WalkingCaneItem.tryDash(player, payload.hand, payload.strafe, payload.forward);
+                WalkingCaneItem.tryDash(
+                        player,
+                        payload.hand,
+                        payload.strafe,
+                        payload.forward,
+                        payload.forceDash
+                );
             }
         }
     }

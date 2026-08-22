@@ -11,12 +11,22 @@ public final class ClientDashSender {
     }
 
     public static void send(InteractionHand hand) {
+        send(hand, false);
+    }
+
+    public static void sendFromKeyMapping(InteractionHand hand) {
+        send(hand, true);
+    }
+
+    private static void send(InteractionHand hand, boolean forceDash) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null && Minecraft.getInstance().getConnection() != null) {
             PacketDistributor.sendToServer(new DashPayload(
                     hand,
                     player.input.leftImpulse,
-                    player.input.forwardImpulse
+                    player.input.forwardImpulse,
+                    false,
+                    forceDash
             ));
         }
     }

@@ -84,7 +84,7 @@ public final class WalkingCane {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("2")
+        event.registrar("3")
                 .playToServer(DashPayload.TYPE, DashPayload.STREAM_CODEC, DashPayload::handle)
                 .playToServer(
                         CooldownUsePayload.TYPE,
