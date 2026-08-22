@@ -246,6 +246,16 @@ public final class WalkingCaneItem extends Item {
             float rawStrafe,
             float rawForward
     ) {
+        tryDash(player, hand, rawStrafe, rawForward, false);
+    }
+
+    public static void tryDash(
+            ServerPlayer player,
+            InteractionHand hand,
+            float rawStrafe,
+            float rawForward,
+            boolean forceDash
+    ) {
         if (!WalkingCaneConfig.isHandEnabled(hand)) {
             return;
         }
@@ -255,7 +265,7 @@ public final class WalkingCaneItem extends Item {
             return;
         }
 
-        if (cane.canTeleport && player.isShiftKeyDown()) {
+        if (cane.canTeleport && player.isShiftKeyDown() && !forceDash) {
             return;
         }
 

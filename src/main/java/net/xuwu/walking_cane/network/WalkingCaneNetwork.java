@@ -7,7 +7,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import net.xuwu.walking_cane.WalkingCane;
 
 public final class WalkingCaneNetwork {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(WalkingCane.MOD_ID, "main"),

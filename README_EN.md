@@ -18,6 +18,7 @@ Walking Cane is a Minecraft mod for Forge 1.20.1 and NeoForge 1.21.1. It adds wa
 - Dashing follows the movement input direction, or the look direction when there is no movement input, and costs 1 durability.
 - Sneaking and right-clicking with an Ender Cane teleports to the open surface ahead and consumes configured teleport items from the other hand.
 - Ender's Grace preserves 1 teleport consumable per enchantment level. Teleport distance is determined by the base distance and the number of consumables.
+- Dash and teleport each have a separate key mapping, unbound by default. While unbound they retain the right-click and sneak + right-click triggers; once bound, the corresponding key is used instead.
 
 ## Enchantments
 

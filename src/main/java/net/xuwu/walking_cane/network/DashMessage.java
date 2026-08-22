@@ -9,13 +9,20 @@ import net.xuwu.walking_cane.item.WalkingCaneItem;
 
 import java.util.function.Supplier;
 
-public record DashMessage(InteractionHand hand, float strafe, float forward, boolean teleport) {
+public record DashMessage(
+        InteractionHand hand,
+        float strafe,
+        float forward,
+        boolean teleport,
+        boolean forceDash
+)
+{
     public DashMessage(InteractionHand hand, float strafe, float forward) {
-        this(hand, strafe, forward, false);
+        this(hand, strafe, forward, false, false);
     }
 
     public static DashMessage teleport(InteractionHand hand) {
-        return new DashMessage(hand, 0.0F, 0.0F, true);
+        return new DashMessage(hand, 0.0F, 0.0F, true, false);
     }
 
     public static void encode(DashMessage message, FriendlyByteBuf buffer) {
@@ -23,6 +30,7 @@ public record DashMessage(InteractionHand hand, float strafe, float forward, boo
         buffer.writeFloat(message.strafe);
         buffer.writeFloat(message.forward);
         buffer.writeBoolean(message.teleport);
+        buffer.writeBoolean(message.forceDash);
     }
 
     public static DashMessage decode(FriendlyByteBuf buffer) {
@@ -30,6 +38,7 @@ public record DashMessage(InteractionHand hand, float strafe, float forward, boo
                 buffer.readEnum(InteractionHand.class),
                 buffer.readFloat(),
                 buffer.readFloat(),
+                buffer.readBoolean(),
                 buffer.readBoolean()
         );
     }
@@ -47,7 +56,8 @@ public record DashMessage(InteractionHand hand, float strafe, float forward, boo
                         player,
                         message.hand,
                         message.strafe,
-                        message.forward
+                        message.forward,
+                        message.forceDash
                 );
             }
         }

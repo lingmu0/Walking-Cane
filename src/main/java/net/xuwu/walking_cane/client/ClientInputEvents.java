@@ -7,6 +7,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.xuwu.walking_cane.WalkingCane;
@@ -26,6 +27,36 @@ public final class ClientInputEvents {
     }
 
     @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean dashPressed = ClientKeyMappings.DASH.consumeClick();
+        boolean teleportPressed = ClientKeyMappings.TELEPORT.consumeClick();
+
+        if (minecraft.screen != null
+                || minecraft.player == null
+                || minecraft.getConnection() == null) {
+            return;
+        }
+
+        if (dashPressed) {
+            InteractionHand hand = findDashKeyHand(minecraft.player);
+            if (hand != null) {
+                ClientDashSender.sendFromKeyMapping(hand);
+            }
+        }
+        if (teleportPressed) {
+            InteractionHand hand = findTeleportKeyHand(minecraft.player);
+            if (hand != null) {
+                ClientTeleportSender.send(hand);
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT
                 || event.getAction() != InputConstants.PRESS
@@ -40,8 +71,8 @@ public final class ClientInputEvents {
 
         boolean teleport = player.isShiftKeyDown();
         InteractionHand hand = teleport
-                ? findTeleportHand(player)
-                : findCapturableHand(player);
+                ? ClientKeyMappings.isTeleportKeyBound() ? null : findTeleportHand(player)
+                : ClientKeyMappings.isDashKeyBound() ? null : findCapturableHand(player);
         if (hand == null) {
             hand = findGenericHand(player);
             if (hand == null) {
@@ -74,6 +105,13 @@ public final class ClientInputEvents {
         }
 
         if (player.isShiftKeyDown()) {
+            if (ClientKeyMappings.isTeleportKeyBound()) {
+                if (hasTeleportCane(player)) {
+                    event.setCanceled(true);
+                }
+                return;
+            }
+
             InteractionHand teleportHand = findTeleportHand(player);
             if (teleportHand != null) {
                 ClientTeleportSender.send(teleportHand);
@@ -101,8 +139,14 @@ public final class ClientInputEvents {
             return;
         }
 
-        if (!(stack.getItem() instanceof WalkingCaneItem cane)
-                || !cane.supportsDisplacementStorage()
+        if (!(stack.getItem() instanceof WalkingCaneItem cane)) {
+            return;
+        }
+        if (ClientKeyMappings.isDashKeyBound() && cane.supportsDisplacementStorage()) {
+            event.setCanceled(true);
+            return;
+        }
+        if (!cane.supportsDisplacementStorage()
                 || CooldownStorageManager.level(stack) <= 0
                 || !player.getCooldowns().isOnCooldown(stack.getItem())
                 || WalkingCaneItem.getStoredDashCharges(stack) <= 0) {
@@ -111,6 +155,51 @@ public final class ClientInputEvents {
 
         ClientDashSender.send(hand);
         event.setCanceled(true);
+    }
+
+    private static InteractionHand findDashKeyHand(LocalPlayer player) {
+        if (isDashKeyCane(player, InteractionHand.MAIN_HAND)) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isDashKeyCane(player, InteractionHand.OFF_HAND)) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isDashKeyCane(LocalPlayer player, InteractionHand hand) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
+            return false;
+        }
+
+        ItemStack stack = player.getItemInHand(hand);
+        return stack.getItem() instanceof WalkingCaneItem cane
+                && cane.supportsDisplacementStorage();
+    }
+
+    private static InteractionHand findTeleportKeyHand(LocalPlayer player) {
+        if (isTeleportKeyCane(player, InteractionHand.MAIN_HAND)) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isTeleportKeyCane(player, InteractionHand.OFF_HAND)) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isTeleportKeyCane(LocalPlayer player, InteractionHand hand) {
+        if (!WalkingCaneConfig.isHandEnabled(hand)) {
+            return false;
+        }
+
+        ItemStack stack = player.getItemInHand(hand);
+        return stack.getItem() instanceof WalkingCaneItem cane
+                && cane.supportsEnderPearlSaver();
+    }
+
+    private static boolean hasTeleportCane(LocalPlayer player) {
+        return isTeleportKeyCane(player, InteractionHand.MAIN_HAND)
+                || isTeleportKeyCane(player, InteractionHand.OFF_HAND);
     }
 
     private static InteractionHand findCapturableHand(LocalPlayer player) {
